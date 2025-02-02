@@ -6,7 +6,7 @@ canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
 document.addEventListener("keydown", (e) => {
-    if (["Control", "s", "u"].includes(e.key) && e.ctrlKey) {
+    if (["Control", "s", "u", "d"].includes(e.key) && e.ctrlKey) {
         e.preventDefault();
     }
 });
@@ -24,7 +24,7 @@ let player = {
     bodyHeight: 50,
     isJumping: false,
     isCrouching: false,
-    crouchOffset: 25 // Adjust height when crouching
+    crouchOffset: 15 // Adjust height when crouching
 };
 
 let keys = {};
@@ -34,6 +34,7 @@ let weaponEquipped = false;
 let weaponOffset = { x: player.armLength, y: player.bodyHeight / 2 };
 let attack = false;
 let weaponAngle = 0;
+let mouseHeld = false;
 
 window.addEventListener("keydown", (e) => {
     keys[e.key] = true;
@@ -43,6 +44,7 @@ window.addEventListener("keydown", (e) => {
     }
     if (e.key === "Control") {
         player.isCrouching = true;
+        player.y += player.crouchOffset; // Adjust y-position when crouching
     }
 });
 
@@ -50,21 +52,30 @@ window.addEventListener("keyup", (e) => {
     keys[e.key] = false;
     if (e.key === "Control") {
         player.isCrouching = false;
+        player.y -= player.crouchOffset; // Reset y-position when not crouching
     }
 });
 
-canvas.addEventListener("mousedown", startDrawing);
-canvas.addEventListener("mousemove", drawWeapon);
-canvas.addEventListener("mouseup", stopDrawing);
-canvas.addEventListener("mousemove", attackWeapon);
+canvas.addEventListener("mousedown", (e) => {
+    mouseHeld = true;
+    startDrawing(e);
+});
+canvas.addEventListener("mousemove", (e) => {
+    if (mouseHeld) {
+        drawWeapon(e);
+        attackWeapon(e);
+    }
+});
+canvas.addEventListener("mouseup", (e) => {
+    mouseHeld = false;
+    stopDrawing(e);
+});
 
 function movePlayer() {
     player.dx = 0;
-    if (keys["ArrowRight"] || keys["d"]) player.dx = player.speed;
-    if (keys["ArrowLeft"] || keys["a"]) player.dx = -player.speed;
-    if (!player.isCrouching) {
-        player.x += player.dx;
-    }
+    if (keys["ArrowRight"] || keys["d"]) player.dx = player.isCrouching ? player.speed / 2 : player.speed;
+    if (keys["ArrowLeft"] || keys["a"]) player.dx = player.isCrouching ? -player.speed / 2 : -player.speed;
+    player.x += player.dx;
     
     player.y += player.dy;
     player.dy += 0.5; // Gravity
@@ -72,6 +83,32 @@ function movePlayer() {
         player.y = groundY - 110;
         player.dy = 0;
         player.isJumping = false;
+    }
+}
+
+function checkWeaponCollision() {
+    if (!weaponEquipped) return;
+    let weaponPivotX = player.x + player.armLength;
+    let weaponPivotY = player.y + player.radius + 20;
+    for (let i = 0; i < weaponPath.length; i++) {
+        let weaponX = weaponPivotX + (weaponPath[i].x - weaponPath[0].x) * Math.cos(weaponAngle) - (weaponPath[i].y - weaponPath[0].y) * Math.sin(weaponAngle);
+        let weaponY = weaponPivotY + (weaponPath[i].x - weaponPath[0].x) * Math.sin(weaponAngle) + (weaponPath[i].y - weaponPath[0].y) * Math.cos(weaponAngle);
+        
+        // Prevent weapon from going under the ground
+        if (weaponY >= groundY) {
+            weaponY = groundY;
+        }
+        
+        // Prevent weapon from going through the player
+        if (weaponX >= player.x - player.radius && weaponX <= player.x + player.radius && weaponY >= player.y - player.radius && weaponY <= player.y + player.radius + player.bodyHeight) {
+            // Resolve collision by adjusting positions without applying excessive force
+            let overlapX = (player.x + player.radius) - weaponX;
+            let overlapY = (player.y + player.radius + player.bodyHeight) - weaponY;
+            player.x -= overlapX / 4;
+            player.y -= overlapY / 4;
+            weaponPivotX += overlapX / 4;
+            weaponPivotY += overlapY / 4;
+        }
     }
 }
 
@@ -107,7 +144,7 @@ function drawPlayer() {
     ctx.stroke();
     
     // Draw animated legs
-    let legOffset = Math.sin(Date.now() / 100) * 5 * (player.dx !== 0 ? 1 : 0);
+    let legOffset = Math.sin(Date.now() / 50) * 10 * (player.dx !== 0 ? 1 : 0);
     ctx.beginPath();
     ctx.moveTo(player.x, player.y + player.radius + player.bodyHeight - bodyYOffset);
     ctx.lineTo(player.x - player.legLength + legOffset, player.y + player.radius + player.bodyHeight + player.legLength - bodyYOffset);
@@ -179,6 +216,7 @@ function update() {
     movePlayer();
     drawPlayer();
     drawWeaponOnPlayer();
+    checkWeaponCollision(); // Check for weapon collision
     requestAnimationFrame(update);
 }
 
