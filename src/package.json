@@ -1,5 +1,5 @@
 {
-  "name": "Stickman-Fighter",
+  "name": "stickman_fighter",
   "version": "1.0.0",
   "description": "Multiplayer Stickman Game",
   "main": "server.js",
