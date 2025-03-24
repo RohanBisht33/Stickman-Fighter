@@ -3,7 +3,7 @@ const ctx = canvas.getContext("2d");
 canvas.width = 800;
 canvas.height = 400;
 
-const socket = io('https://your-render-app-name.onrender.com');
+const socket = io('https://stickman-fighter.onrender.com');
 
 let players = {};
 let localPlayer = null;
