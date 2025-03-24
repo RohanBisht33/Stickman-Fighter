@@ -1,0 +1,17 @@
+{
+  "name": "Stickman-Fighter",
+  "version": "1.0.0",
+  "description": "Multiplayer Stickman Game",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "build": "echo 'No build step'"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.7.2"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
