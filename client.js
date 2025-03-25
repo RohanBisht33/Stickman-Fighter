@@ -201,9 +201,8 @@ class Stickman {
     }
 
     draw(isLocalPlayer = false) {
-        this.drawStickman();
-        
         // Draw health and score for local player
+        this.drawStickman();
         if (isLocalPlayer) {
             this.updateHealthDisplay();
             this.updateScoreDisplay();
@@ -349,19 +348,18 @@ function update() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
     // Draw local player
-    if (localPlayer) {
+    if (localPlayer && isGameStarted) {
         localPlayer.draw(true);
     }
 
     // Draw other players
-    for (let id in players) {
-        if (id !== socket.id) {
-            let otherPlayer = new Stickman(players[id].x, players[id].y, "red");
-            // Use server-provided facing direction
-            otherPlayer.facing = players[id].facing || 1;
-            otherPlayer.draw();
+        for (let id in players) {
+            if (id !== socket.id) {
+                let otherPlayer = new Stickman(players[id].x, players[id].y, "red");
+                otherPlayer.facing = players[id].facing || 1;
+                otherPlayer.draw();
+            }
         }
-    }
 
     requestAnimationFrame(update);
 }
