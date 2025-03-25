@@ -20,10 +20,6 @@
                     <div class="score-label">Score</div>
                     <div class="score" id="localScore">0</div>
                 </div>
-                <div class="jump-status">
-                    <div class="jump-label">Jumps</div>
-                    <div class="jump-remaining" id="jumpRemaining">2/2</div>
-                </div>
             </div>
             <div class="game-controls">
                 <div class="key-guide">
@@ -32,8 +28,7 @@
                         <div class="key-item"><span>D</span> Move Right</div>
                     </div>
                     <div class="key-row">
-                        <div class="key-item"><span>W</span> Jump</div>
-                        <div class="key-item"><span>Shift</span> Air Dash</div>
+                        <div class="key-item"><span>Space</span> Jump</div>
                     </div>
                     <div class="key-row">
                         <div class="key-item"><span>J</span> Punch</div>
@@ -42,7 +37,7 @@
                 </div>
             </div>
         </div>
-        <canvas id="gameCanvas" width="800" height="700"></canvas>
+        <canvas id="gameCanvas"></canvas>
     </div>
     <script src="/socket.io/socket.io.js"></script>
     <script src="client.js"></script>
