@@ -4,10 +4,30 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stickman Fighter</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <canvas id="gameCanvas"></canvas>
+    <div class="game-container">
+        <div class="game-info">
+            <div class="player-stats local-player">
+                <div class="health-bar">
+                    <div class="health-fill" id="localHealth">100%</div>
+                </div>
+                <div class="score" id="localScore">Score: 0</div>
+            </div>
+            <div class="game-controls">
+                <div class="key-guide">
+                    <div><span>A</span> Move Left</div>
+                    <div><span>D</span> Move Right</div>
+                    <div><span>W</span> Jump</div>
+                    <div><span>Shift</span> Air Dash</div>
+                    <div><span>J</span> Punch</div>
+                    <div><span>K</span> Kick</div>
+                </div>
+            </div>
+        </div>
+        <canvas id="gameCanvas"></canvas>
+    </div>
     <script src="/socket.io/socket.io.js"></script>
     <script src="client.js"></script>
 </body>
