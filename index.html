@@ -10,19 +10,35 @@
     <div class="game-container">
         <div class="game-info">
             <div class="player-stats local-player">
-                <div class="health-bar">
-                    <div class="health-fill" id="localHealth">100%</div>
+                <div class="health-container">
+                    <div class="health-label">Health</div>
+                    <div class="health-bar">
+                        <div class="health-fill" id="localHealth">100%</div>
+                    </div>
                 </div>
-                <div class="score" id="localScore">Score: 0</div>
+                <div class="score-container">
+                    <div class="score-label">Score</div>
+                    <div class="score" id="localScore">0</div>
+                </div>
+                <div class="jump-status">
+                    <div class="jump-label">Jumps</div>
+                    <div class="jump-remaining" id="jumpRemaining">2/2</div>
+                </div>
             </div>
             <div class="game-controls">
                 <div class="key-guide">
-                    <div><span>A</span> Move Left</div>
-                    <div><span>D</span> Move Right</div>
-                    <div><span>W</span> Jump</div>
-                    <div><span>Shift</span> Air Dash</div>
-                    <div><span>J</span> Punch</div>
-                    <div><span>K</span> Kick</div>
+                    <div class="key-row">
+                        <div class="key-item"><span>A</span> Move Left</div>
+                        <div class="key-item"><span>D</span> Move Right</div>
+                    </div>
+                    <div class="key-row">
+                        <div class="key-item"><span>W</span> Jump</div>
+                        <div class="key-item"><span>Shift</span> Air Dash</div>
+                    </div>
+                    <div class="key-row">
+                        <div class="key-item"><span>J</span> Punch</div>
+                        <div class="key-item"><span>K</span> Kick</div>
+                    </div>
                 </div>
             </div>
         </div>

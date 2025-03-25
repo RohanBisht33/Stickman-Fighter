@@ -1,8 +1,11 @@
+```css
 body {
     margin: 0;
-    font-family: 'Arial', sans-serif;
-    background-color: #1a1a1a;
+    font-family: 'Orbitron', 'Arial', sans-serif;
+    background-color: #121212;
     overflow: hidden;
+    color: #e0e0e0;
+    user-select: none;
 }
 
 .game-container {
@@ -11,6 +14,7 @@ body {
     height: 100vh;
     display: flex;
     flex-direction: column;
+    background: linear-gradient(45deg, #1a1a2e, #16213e);
 }
 
 .game-info {
@@ -20,68 +24,131 @@ body {
     width: 100%;
     display: flex;
     justify-content: space-between;
-    padding: 10px;
+    padding: 20px;
     box-sizing: border-box;
     z-index: 10;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
 }
 
 .player-stats {
-    background-color: rgba(0, 0, 0, 0.5);
-    padding: 10px;
-    border-radius: 5px;
+    display: flex;
+    gap: 30px;
+    align-items: center;
+    backdrop-filter: blur(10px);
+    border-radius: 15px;
+    padding: 15px;
+    background: rgba(30,30,30,0.5);
+}
+
+.health-container, .score-container, .jump-status {
+    background-color: rgba(50,50,50,0.6);
+    border-radius: 12px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 120px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    transition: transform 0.2s ease;
+}
+
+.health-container:hover, 
+.score-container:hover, 
+.jump-status:hover {
+    transform: scale(1.05);
+}
+
+.health-label, .score-label, .jump-label {
+    font-size: 14px;
+    margin-bottom: 8px;
+    color: #4CAF50;
+    text-transform: uppercase;
+    letter-spacing: 1px;
 }
 
 .health-bar {
-    width: 200px;
+    width: 100%;
     height: 20px;
-    background-color: #444;
-    border-radius: 10px;
+    background-color: #333;
+    border-radius: 15px;
     overflow: hidden;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
 }
 
 .health-fill {
     width: 100%;
     height: 100%;
-    background-color: #4CAF50;
-    transition: width 0.3s ease;
+    background: linear-gradient(to right, #4CAF50, #81c784);
+    transition: width 0.3s ease, background 0.3s ease;
     display: flex;
     align-items: center;
     justify-content: center;
+    font-size: 12px;
     color: white;
-    font-weight: bold;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
 }
 
-.score {
-    color: white;
-    margin-top: 5px;
-    font-size: 16px;
+.score, .jump-remaining {
+    font-size: 24px;
+    font-weight: bold;
+    color: #4CAF50;
 }
 
 .game-controls {
-    background-color: rgba(0, 0, 0, 0.5);
-    padding: 10px;
-    border-radius: 5px;
+    background: rgba(50,50,50,0.7);
+    border-radius: 15px;
+    padding: 15px;
+    backdrop-filter: blur(10px);
 }
 
 .key-guide {
-    color: white;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
 }
 
-.key-guide div {
-    margin: 5px 0;
+.key-row {
+    display: flex;
+    gap: 20px;
 }
 
-.key-guide span {
+.key-item {
+    display: flex;
+    align-items: center;
+    color: #e0e0e0;
+}
+
+.key-item span {
     background-color: #333;
-    padding: 2px 5px;
-    border-radius: 3px;
+    color: #4CAF50;
+    padding: 5px 10px;
+    border-radius: 8px;
     margin-right: 10px;
-    min-width: 30px;
-    display: inline-block;
+    min-width: 40px;
     text-align: center;
+    font-size: 14px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    transition: background-color 0.2s ease;
+}
+
+.key-item span:hover {
+    background-color: #4CAF50;
+    color: #121212;
 }
 
 #gameCanvas {
     flex-grow: 1;
-    background: white;
+    background: linear-gradient(to bottom, #2c3e50, #34495e);
+    box-shadow: 0 -10px 20px rgba(0,0,0,0.2);
 }
+```
+
+Some key improvements:
+1. More dynamic color scheme
+2. Added hover effects
+3. Improved typography
+4. More depth with shadows and gradients
+5. Blur and backdrop filter for a modern look
+6. Responsive design elements
+
+Would you like me to help you integrate these changes? The stickman is now larger and more detailed, and the UI has been significantly enhanced.

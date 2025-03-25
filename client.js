@@ -41,8 +41,8 @@ class Stickman {
         this.velY = 0;
 
         // Dimensions
-        this.width = 30;
-        this.height = 50;
+        this.width = 50;
+        this.height = 80;
         this.color = color;
 
         // Movement properties
@@ -52,7 +52,9 @@ class Stickman {
         
         // State tracking
         this.onGround = false;
+        this.facing = 1; // 1 for right, -1 for left
         this.jumpsRemaining = 2;  // Double jump
+        this.isJumping = false;
         this.canAirDash = true;
         
         // Combat properties
@@ -68,24 +70,28 @@ class Stickman {
         switch(direction) {
             case "left":
                 this.velX = -this.speed;
+                this.facing = -1;
                 break;
             case "right":
                 this.velX = this.speed;
+                this.facing = 1;
                 break;
         }
     }
 
     jump() {
+        // Allow second jump only if already in jumping state
         if (this.jumpsRemaining > 0) {
             this.velY = this.jumpPower;
             this.jumpsRemaining--;
             this.onGround = false;
+            this.isJumping = true;
         }
     }
 
     airDash() {
         if (this.canAirDash && !this.onGround) {
-            const dashSpeed = 10;
+            const dashSpeed = 20;
             this.velX = this.velX > 0 ? dashSpeed : -dashSpeed;
             this.canAirDash = false;
         }
@@ -106,6 +112,7 @@ class Stickman {
             this.velY = 0;
             this.onGround = true;
             this.jumpsRemaining = 2;
+            this.isJumping = false;
             this.canAirDash = true;
         }
 
@@ -116,33 +123,47 @@ class Stickman {
     drawStickman() {
         ctx.fillStyle = this.color;
         
-        // Head
+        // Enhanced Head - larger and more defined
         ctx.beginPath();
-        ctx.arc(this.x + this.width/2, this.y + 10, 10, 0, Math.PI * 2);
+        ctx.arc(this.x + this.width/2, this.y + 20, 20, 0, Math.PI * 2);
         ctx.fill();
 
-        // Body
+        // More expressive Eyes
+        ctx.fillStyle = "white";
+        const eyeX = this.x + this.width/2 + (10 * this.facing);
+        const eyeY = this.y + 15;
         ctx.beginPath();
-        ctx.moveTo(this.x + this.width/2, this.y + 20);
-        ctx.lineTo(this.x + this.width/2, this.y + 40);
+        ctx.arc(eyeX, eyeY, 5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Pupil
+        ctx.fillStyle = "black";
+        ctx.beginPath();
+        ctx.arc(eyeX, eyeY, 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Body - thicker and more pronounced
         ctx.strokeStyle = this.color;
-        ctx.lineWidth = 3;
-        ctx.stroke();
-
-        // Arms
-        ctx.beginPath();
-        ctx.moveTo(this.x + this.width/2, this.y + 25);
-        ctx.lineTo(this.x + this.width/2 - 15, this.y + 30);
-        ctx.moveTo(this.x + this.width/2, this.y + 25);
-        ctx.lineTo(this.x + this.width/2 + 15, this.y + 30);
-        ctx.stroke();
-
-        // Legs
+        ctx.lineWidth = 6;
         ctx.beginPath();
         ctx.moveTo(this.x + this.width/2, this.y + 40);
-        ctx.lineTo(this.x + this.width/2 - 10, this.y + 50);
-        ctx.moveTo(this.x + this.width/2, this.y + 40);
-        ctx.lineTo(this.x + this.width/2 + 10, this.y + 50);
+        ctx.lineTo(this.x + this.width/2, this.y + 65);
+        ctx.stroke();
+
+        // Arms - longer and more dynamic
+        ctx.beginPath();
+        ctx.moveTo(this.x + this.width/2, this.y + 45);
+        ctx.lineTo(this.x + this.width/2 - 30, this.y + 55);
+        ctx.moveTo(this.x + this.width/2, this.y + 45);
+        ctx.lineTo(this.x + this.width/2 + 30, this.y + 55);
+        ctx.stroke();
+
+        // Legs - more pronounced stance
+        ctx.beginPath();
+        ctx.moveTo(this.x + this.width/2, this.y + 65);
+        ctx.lineTo(this.x + this.width/2 - 25, this.y + 90);
+        ctx.moveTo(this.x + this.width/2, this.y + 65);
+        ctx.lineTo(this.x + this.width/2 + 25, this.y + 90);
         ctx.stroke();
     }
 
