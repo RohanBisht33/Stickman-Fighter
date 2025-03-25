@@ -79,7 +79,7 @@ class Stickman {
         
         // State tracking
         this.onGround = false;
-        this.facing = -1; // 1 for right, -1 for left
+        this.facing = 1; // 1 for right, -1 for left
         this.jumpsRemaining = 2;  // Double jump
         this.isJumping = false;
         this.canAirDash = true;
@@ -97,11 +97,11 @@ class Stickman {
         switch(direction) {
             case "left":
                 this.velX = -this.speed;
-                this.facing = 1;
+                this.facing = -1;
                 break;
             case "right":
                 this.velX = this.speed;
-                this.facing = -1;
+                this.facing = 1;
                 break;
         }
     }
@@ -373,7 +373,6 @@ socket.on("connect", () => {
 
 socket.on("updatePlayers", (serverPlayers) => {
     players = serverPlayers;
-    delete players[socket.id]; // Remove local player from the list
 });
 
 // Reduce console logging
