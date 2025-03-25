@@ -7,13 +7,21 @@ body {
     user-select: none;
 }
 
+#gameCanvas {
+    width: 100%;
+    height: calc(100vh - 100px); /* Adjust based on your game info height */
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    background: linear-gradient(to bottom, #2c3e50, #34495e);
+    box-shadow: 0 -10px 20px rgba(0,0,0,0.2);
+}
+
 .game-container {
     position: relative;
     width: 100vw;
     height: 100vh;
-    display: flex;
-    flex-direction: column;
-    background: linear-gradient(45deg, #1a1a2e, #16213e);
+    overflow: hidden;
 }
 
 .game-info {
@@ -133,10 +141,4 @@ body {
 .key-item span:hover {
     background-color: #4CAF50;
     color: #121212;
-}
-
-#gameCanvas {
-    flex-grow: 1;
-    background: linear-gradient(to bottom, #2c3e50, #34495e);
-    box-shadow: 0 -10px 20px rgba(0,0,0,0.2);
 }

@@ -32,15 +32,17 @@ io.on("connection", (socket) => {
     // Broadcast updated player list to all clients
     io.emit("updatePlayers", players);
 
-    socket.on("playerMove", (data) => {
-        if (players[socket.id]) {
-            players[socket.id].x = data.x;
-            players[socket.id].y = data.y;
-            players[socket.id].health = data.health;
-            players[socket.id].score = data.score;
-        }
-        io.emit("updatePlayers", players);
-    });
+    // Server-side socket handling (pseudo-code)
+socket.on('playerMove', (playerData) => {
+    players[socket.id] = {
+        x: playerData.x,
+        y: playerData.y,
+        health: playerData.health,
+        score: playerData.score,
+        facing: playerData.facing  // Store and broadcast facing direction
+    };
+    io.emit('updatePlayers', players);
+});
 
     socket.on("disconnect", () => {
         console.log("Player disconnected:", socket.id);

@@ -8,6 +8,21 @@ const socket = io("https://stickman-fighter.onrender.com/"); // Connect to serve
 let players = {};
 let localPlayer = null;
 
+function resizeCanvas() {
+    const canvas = document.getElementById("gameCanvas");
+    const gameContainer = document.querySelector(".game-container");
+    
+    canvas.width = gameContainer.clientWidth;
+    canvas.height = gameContainer.clientHeight - document.querySelector(".game-info").offsetHeight;
+    
+    // Ensure the canvas takes full width and height below the game info
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+}
+
+// Call on load and window resize
+window.addEventListener('load', resizeCanvas);
+window.addEventListener('resize', resizeCanvas);
 function updateHealthDisplay() {
     const healthFill = document.getElementById('localHealth');
     if (healthFill) {
@@ -35,8 +50,8 @@ function updateScoreDisplay() {
 class Stickman {
     constructor(x, y, color) {
         // Position and movement
-        this.x = x;
-        this.y = y;
+        this.x = x || (canvas.width * 0.1);  // 10% from left
+        this.y = y || (canvas.height * 0.7); // 70% from top
         this.velX = 0;
         this.velY = 0;
 
@@ -246,7 +261,8 @@ function update() {
             x: localPlayer.x, 
             y: localPlayer.y,
             health: localPlayer.health,
-            score: localPlayer.score
+            score: localPlayer.score,
+            facing: localPlayer.facing  // Add facing direction
         });
     }
 
@@ -273,8 +289,16 @@ socket.on("connect", () => {
     localPlayer = new Stickman(100, 300, "blue");
 });
 
-socket.on("updatePlayers", (serverPlayers) => {
-    players = serverPlayers;
+// Server-side socket handling (pseudo-code)
+socket.on('playerMove', (playerData) => {
+    players[socket.id] = {
+        x: playerData.x,
+        y: playerData.y,
+        health: playerData.health,
+        score: playerData.score,
+        facing: playerData.facing  // Store and broadcast facing direction
+    };
+    io.emit('updatePlayers', players);
 });
 
 update();
