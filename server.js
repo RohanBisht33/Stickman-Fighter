@@ -33,12 +33,14 @@ io.on("connection", (socket) => {
     io.emit("updatePlayers", players);
 
     socket.on("playerMove", (data) => {
-        if (players[socket.id]) {
-            players[socket.id].x = data.x;
-            players[socket.id].y = data.y;
-        }
-        io.emit("updatePlayers", players);
-    });
+    if (players[socket.id]) {
+        players[socket.id].x = data.x;
+        players[socket.id].y = data.y;
+        players[socket.id].health = data.health;
+        players[socket.id].score = data.score;
+    }
+    io.emit("updatePlayers", players);
+});
 
     socket.on("disconnect", () => {
         console.log("Player disconnected:", socket.id);
