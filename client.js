@@ -1,12 +1,22 @@
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
-canvas.width = 800;
-canvas.height = 400;
 
 const socket = io("https://stickman-fighter.onrender.com/"); // Connect to server
 
+document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") {
+        socket.emit("playerInactive", { id: socket.id }); // Mark as inactive
+    } else {
+        socket.emit("playerActive", { id: socket.id }); // Mark as active
+    }
+});
+window.addEventListener("beforeunload", () => {
+    socket.emit("playerInactive", { id: socket.id });
+});
+
 let players = {};
 let localPlayer = null;
+
 
 function resizeCanvas() {
     const canvas = document.getElementById("gameCanvas");
@@ -23,6 +33,8 @@ function resizeCanvas() {
 // Call on load and window resize
 window.addEventListener('load', resizeCanvas);
 window.addEventListener('resize', resizeCanvas);
+
+
 function updateHealthDisplay() {
     const healthFill = document.getElementById('localHealth');
     if (healthFill) {
@@ -48,16 +60,16 @@ function updateScoreDisplay() {
 }
 
 class Stickman {
-    constructor(x, y, color) {
+    constructor(x, y, color) { // Default size
         // Position and movement
-        this.x = x || (canvas.width * 0.1);  // 10% from left
-        this.y = y || (canvas.height * 0.7); // 70% from top
+        this.x = 140;
+        this.y = canvas.height - 150;
         this.velX = 0;
         this.velY = 0;
 
         // Dimensions
-        this.width = 50;
-        this.height = 80;
+        this.width = -100;
+        this.height = 100;
         this.color = color;
 
         // Movement properties
@@ -67,7 +79,7 @@ class Stickman {
         
         // State tracking
         this.onGround = false;
-        this.facing = 1; // 1 for right, -1 for left
+        this.facing = -1; // 1 for right, -1 for left
         this.jumpsRemaining = 2;  // Double jump
         this.isJumping = false;
         this.canAirDash = true;
@@ -85,11 +97,11 @@ class Stickman {
         switch(direction) {
             case "left":
                 this.velX = -this.speed;
-                this.facing = -1;
+                this.facing = 1;
                 break;
             case "right":
                 this.velX = this.speed;
-                this.facing = 1;
+                this.facing = -1;
                 break;
         }
     }
@@ -134,53 +146,61 @@ class Stickman {
         // Screen boundaries
         this.x = Math.max(0, Math.min(this.x, canvas.width - this.width));
     }
-
     drawStickman() {
+        const scaleX = this.width / 50;  // Default width was 50
+        const scaleY = this.height / 80; // Default height was 80
+    
+        ctx.save();  
+        ctx.translate(this.x, this.y);  
+        ctx.scale(scaleX, scaleY);  
+    
         ctx.fillStyle = this.color;
-        
-        // Enhanced Head - larger and more defined
+    
+        // Head
         ctx.beginPath();
-        ctx.arc(this.x + this.width/2, this.y + 20, 20, 0, Math.PI * 2);
+        ctx.arc(25, 20, 20, 0, Math.PI * 2);  // (Centered at 25, 20)
         ctx.fill();
-
-        // More expressive Eyes
+    
+        // Eyes
         ctx.fillStyle = "white";
-        const eyeX = this.x + this.width/2 + (10 * this.facing);
-        const eyeY = this.y + 15;
         ctx.beginPath();
-        ctx.arc(eyeX, eyeY, 5, 0, Math.PI * 2);
+        ctx.arc(25 + (10 * (this.facing)), 15, 5, 0, Math.PI * 2);
         ctx.fill();
-
+    
         // Pupil
         ctx.fillStyle = "black";
         ctx.beginPath();
-        ctx.arc(eyeX, eyeY, 2, 0, Math.PI * 2);
+        ctx.arc(25 + (10 * (this.facing)), 15, 2, 0, Math.PI * 2);
         ctx.fill();
-
-        // Body - thicker and more pronounced
+    
+        // Body
         ctx.strokeStyle = this.color;
         ctx.lineWidth = 6;
         ctx.beginPath();
-        ctx.moveTo(this.x + this.width/2, this.y + 40);
-        ctx.lineTo(this.x + this.width/2, this.y + 65);
+        ctx.moveTo(25, 40);
+        ctx.lineTo(25, 65);
         ctx.stroke();
-
-        // Arms - longer and more dynamic
+    
+        // Arms
         ctx.beginPath();
-        ctx.moveTo(this.x + this.width/2, this.y + 45);
-        ctx.lineTo(this.x + this.width/2 - 30, this.y + 55);
-        ctx.moveTo(this.x + this.width/2, this.y + 45);
-        ctx.lineTo(this.x + this.width/2 + 30, this.y + 55);
+        ctx.moveTo(25, 45);
+        ctx.lineTo(25 - 30, 55);
+        ctx.moveTo(25, 45);
+        ctx.lineTo(25 + 30, 55);
         ctx.stroke();
-
-        // Legs - more pronounced stance
+    
+        // Legs
         ctx.beginPath();
-        ctx.moveTo(this.x + this.width/2, this.y + 65);
-        ctx.lineTo(this.x + this.width/2 - 25, this.y + 90);
-        ctx.moveTo(this.x + this.width/2, this.y + 65);
-        ctx.lineTo(this.x + this.width/2 + 25, this.y + 90);
+        ctx.moveTo(25, 65);
+        ctx.lineTo(25 - 25, 90);
+        ctx.moveTo(25, 65);
+        ctx.lineTo(25 + 25, 90);
         ctx.stroke();
+    
+        ctx.restore();
     }
+    
+    
 
     draw(isLocalPlayer = false) {
         this.drawStickman();
@@ -194,13 +214,53 @@ class Stickman {
 
     updateHealthDisplay = updateHealthDisplay;
     updateScoreDisplay = updateScoreDisplay;
-
+    findOpponent() {
+        let closest = null;
+        let minDistance = 50;  // Adjust attack range
+    
+        for (let id in players) {
+            if (id !== socket.id) { // Don't hit yourself
+                let opponent = players[id];
+                let distance = Math.abs(this.x - opponent.x);
+    
+                if (distance < minDistance) {
+                    closest = opponent;
+                    minDistance = distance;
+                }
+            }
+        }
+        return closest;
+    }    
     // Basic combo system
+    punch() {
+        console.log("Punch!");
+        this.score += 5;
+    
+        let target = this.findOpponent();
+        if (target) {
+            target.health -= 5;
+            console.log(`Punch opponent! New health: ${target.health}`);
+    
+            socket.emit("updateHealth", { id: target.id, health: target.health });
+        }
+    }
+    kick() {
+        console.log("Kick!");
+        this.score += 5;
+    
+        let target = this.findOpponent();
+        if (target) {
+            target.health -= 5;
+            console.log(`Kick opponent! New health: ${target.health}`);
+    
+            socket.emit("updateHealth", { id: target.id, health: target.health });
+        }
+    }
     addCombo(move) {
         const currentTime = Date.now();
         
         // Reset combo if too much time has passed
-        if (currentTime - this.lastComboTime > 1000) {
+        if (currentTime - this.lastComboTime > 800) {
             this.currentCombo = [];
         }
 
@@ -213,15 +273,25 @@ class Stickman {
 
     checkCombos() {
         const comboString = this.currentCombo.join(',');
-        
+        let target = this.findOpponent();
         switch(comboString) {
             case 'punch,punch':
                 console.log("Double Punch Combo!");
-                this.score += 10;
+                if (target) {
+                    target.health -= 15;
+                    console.log(`punch-punch opponent! New health: ${target.health}`);
+            
+                    socket.emit("updateHealth", { id: target.id, health: target.health });
+                }
                 break;
             case 'kick,punch':
                 console.log("Punch-Kick Combo!");
-                this.score += 15;
+                if (target) {
+                    target.health -= 20;
+                    console.log(`Kick-punch opponent! New health: ${target.health}`);
+            
+                    socket.emit("updateHealth", { id: target.id, health: target.health });
+                }
                 break;
         }
 
@@ -254,6 +324,8 @@ function update() {
         if (keys['d']) localPlayer.move("right");
         if (keys[' ']) localPlayer.jump();
         if (keys['shift']) localPlayer.airDash();
+        if (keys['j']) localPlayer.punch();
+        if (keys['k']) localPlayer.kick();
 
         localPlayer.update();
 
@@ -276,8 +348,11 @@ function update() {
     // Draw other players
     for (let id in players) {
         if (id !== socket.id) {
-            let otherPlayer = new Stickman(players[id].x, players[id].y, "red");
-            otherPlayer.draw();
+            let otherPlayer = players[id];
+            if (otherPlayer.isActive){
+                otherPlayer.facing = players[id].facing || 1;
+                otherPlayer.draw();
+        }
         }
     }
 
@@ -287,19 +362,11 @@ function update() {
 socket.on("connect", () => {
     // Initialize local player when connected
     localPlayer = new Stickman(100, 300, "blue");
+    
 });
 
 socket.on("updatePlayers", (serverPlayers) => {
     players = serverPlayers;
-    
-    for (let id in players) {
-        if (id !== socket.id) {
-            let otherPlayer = new Stickman(players[id].x, players[id].y, "red");
-            // Use server-provided facing direction
-            otherPlayer.facing = players[id].facing || 1;
-            otherPlayer.draw();
-        }
-    }
 });
 
 update();

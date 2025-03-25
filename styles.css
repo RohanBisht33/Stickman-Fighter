@@ -1,27 +1,25 @@
 body {
     margin: 0;
     font-family: 'Orbitron', 'Arial', sans-serif;
-    background-color: #121212;
+    background-color: #ffffff;
     overflow: hidden;
     color: #e0e0e0;
     user-select: none;
-}
-
-#gameCanvas {
-    width: 100%;
-    height: calc(100vh - 100px); /* Adjust based on your game info height */
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    background: linear-gradient(to bottom, #2c3e50, #34495e);
-    box-shadow: 0 -10px 20px rgba(0,0,0,0.2);
 }
 
 .game-container {
     position: relative;
     width: 100vw;
     height: 100vh;
-    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(45deg, #1a1a2e, #16213e);
+}
+
+#gameCanvas {
+    flex-grow: 1;
+    background: linear-gradient(to bottom, #2c3e50, #34495e);
+    box-shadow: 0 -10px 20px rgba(0,0,0,0.2);
 }
 
 .game-info {
@@ -34,7 +32,7 @@ body {
     padding: 20px;
     box-sizing: border-box;
     z-index: 10;
-    background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
+    /*background: linear-gradient(to bottom, rgba(255, 255, 255, 0.8), transparent);*/
 }
 
 .player-stats {
@@ -122,7 +120,7 @@ body {
 .key-item {
     display: flex;
     align-items: center;
-    color: #e0e0e0;
+    color: #0d0505;
 }
 
 .key-item span {
