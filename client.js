@@ -1,31 +1,25 @@
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
+const startButton = document.getElementById("startButton");
+const welcomeScreen = document.getElementById("welcomeScreen");
 
 const socket = io("https://stickman-fighter.onrender.com/"); // Connect to server
 
-document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden") {
-        socket.emit("playerInactive", { id: socket.id }); // Mark as inactive
-    } else {
-        socket.emit("playerActive", { id: socket.id }); // Mark as active
-    }
-});
 window.addEventListener("beforeunload", () => {
     socket.emit("playerInactive", { id: socket.id });
 });
 
 let players = {};
 let localPlayer = null;
-
+let isGameStarted = false;
 
 function resizeCanvas() {
-    const canvas = document.getElementById("gameCanvas");
     const gameContainer = document.querySelector(".game-container");
+    const gameInfo = document.querySelector(".game-info");
     
     canvas.width = gameContainer.clientWidth;
-    canvas.height = gameContainer.clientHeight - document.querySelector(".game-info").offsetHeight;
+    canvas.height = gameContainer.clientHeight - gameInfo.offsetHeight;
     
-    // Ensure the canvas takes full width and height below the game info
     canvas.style.width = '100%';
     canvas.style.height = '100%';
 }
@@ -34,6 +28,12 @@ function resizeCanvas() {
 window.addEventListener('load', resizeCanvas);
 window.addEventListener('resize', resizeCanvas);
 
+// Start game event listener
+startButton.addEventListener('click', () => {
+    welcomeScreen.style.display = 'none';
+    resizeCanvas();
+    isGameStarted = true;
+});
 
 function updateHealthDisplay() {
     const healthFill = document.getElementById('localHealth');
@@ -60,15 +60,15 @@ function updateScoreDisplay() {
 }
 
 class Stickman {
-    constructor(x, y, color) { // Default size
+    constructor(x, y, color) {
         // Position and movement
-        this.x = 140;
-        this.y = canvas.height - 150;
+        this.x = x;
+        this.y = y;
         this.velX = 0;
         this.velY = 0;
 
         // Dimensions
-        this.width = -100;
+        this.width = 100;
         this.height = 100;
         this.color = color;
 
@@ -107,7 +107,6 @@ class Stickman {
     }
 
     jump() {
-        // Allow second jump only if already in jumping state
         if (this.jumpsRemaining > 0) {
             this.velY = this.jumpPower;
             this.jumpsRemaining--;
@@ -146,6 +145,7 @@ class Stickman {
         // Screen boundaries
         this.x = Math.max(0, Math.min(this.x, canvas.width - this.width));
     }
+
     drawStickman() {
         const scaleX = this.width / 50;  // Default width was 50
         const scaleY = this.height / 80; // Default height was 80
@@ -199,8 +199,6 @@ class Stickman {
     
         ctx.restore();
     }
-    
-    
 
     draw(isLocalPlayer = false) {
         this.drawStickman();
@@ -214,6 +212,7 @@ class Stickman {
 
     updateHealthDisplay = updateHealthDisplay;
     updateScoreDisplay = updateScoreDisplay;
+
     findOpponent() {
         let closest = null;
         let minDistance = 50;  // Adjust attack range
@@ -231,7 +230,7 @@ class Stickman {
         }
         return closest;
     }    
-    // Basic combo system
+
     punch() {
         console.log("Punch!");
         this.score += 5;
@@ -244,6 +243,7 @@ class Stickman {
             socket.emit("updateHealth", { id: target.id, health: target.health });
         }
     }
+
     kick() {
         console.log("Kick!");
         this.score += 5;
@@ -256,6 +256,7 @@ class Stickman {
             socket.emit("updateHealth", { id: target.id, health: target.health });
         }
     }
+
     addCombo(move) {
         const currentTime = Date.now();
         
@@ -305,6 +306,8 @@ class Stickman {
 // Handle input
 let keys = {};
 window.addEventListener("keydown", (e) => { 
+    if (!isGameStarted) return; // Prevent input before game starts
+
     keys[e.key.toLowerCase()] = true;
     
     // Combo input
@@ -318,8 +321,13 @@ window.addEventListener("keydown", (e) => {
 window.addEventListener("keyup", (e) => { keys[e.key.toLowerCase()] = false; });
 
 function update() {
+    if (!isGameStarted) {
+        requestAnimationFrame(update);
+        return;
+    }
+
     if (localPlayer) {
-        // Movement logic remains the same
+        // Movement logic
         if (keys['a']) localPlayer.move("left");
         if (keys['d']) localPlayer.move("right");
         if (keys[' ']) localPlayer.jump();
@@ -345,41 +353,27 @@ function update() {
         localPlayer.draw(true);
     }
 
-    // Draw other players with minimal logging
-    Object.keys(players).forEach(id => {
-        const otherPlayer = players[id];
-        otherPlayer.draw();
-    });
+    // Draw other players
+    for (let id in players) {
+        if (id !== socket.id) {
+            let otherPlayer = new Stickman(players[id].x, players[id].y, "red");
+            // Use server-provided facing direction
+            otherPlayer.facing = players[id].facing || 1;
+            otherPlayer.draw();
+        }
+    }
 
     requestAnimationFrame(update);
 }
 
-
 socket.on("connect", () => {
-    // Create local player with server-provided initial position
-    localPlayer = new Stickman(100, 300, "blue");
+    // Create local player with initial position
+    localPlayer = new Stickman(100, canvas.height - 150, "blue");
 });
 
 socket.on("updatePlayers", (serverPlayers) => {
-    // Completely reset players
-    players = {};
-    
-    // Only create players that are not the local player and are active
-    Object.keys(serverPlayers).forEach(id => {
-        if (id !== socket.id && serverPlayers[id].isActive === true) {
-            const playerData = serverPlayers[id];
-            
-            const newPlayer = new Stickman(playerData.x || 100, playerData.y || 300, "red");
-            newPlayer.x = playerData.x || 100;
-            newPlayer.y = playerData.y || 300;
-            newPlayer.health = playerData.health || 100;
-            newPlayer.score = playerData.score || 0;
-            newPlayer.facing = playerData.facing || 1;
-            newPlayer.isActive = true;
-            
-            players[id] = newPlayer;
-        }
-    });
+    players = serverPlayers;
+    delete players[socket.id]; // Remove local player from the list
 });
 
 // Reduce console logging

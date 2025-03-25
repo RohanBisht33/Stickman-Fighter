@@ -19,7 +19,7 @@ let players = {};
 function getRandomPosition() {
     return { 
         x: Math.random() * 700 + 50,  // Random x between 50-750
-        y: 200,  // Fixed ground level
+        y: 300,  // Fixed ground level
         health: 100,
         score: 0,
         isActive: true,
@@ -51,6 +51,24 @@ io.on("connection", (socket) => {
     // Broadcast updated player list to all clients
     io.emit("updatePlayers", players);
 
+    socket.on("playerMove", (data) => {
+        console.log("Received player move:", data); // Debug log
+        
+        if (players[socket.id]) {
+            // Update all player properties
+            players[socket.id] = {
+                x: data.x,
+                y: data.y,
+                health: data.health,
+                score: data.score,
+                facing: data.facing,
+                isActive: true
+            };
+        }
+        
+        // Broadcast updated players to all clients
+        io.emit("updatePlayers", players);
+    });
     socket.on("disconnect", () => {
         delete players[socket.id];
         io.emit("updatePlayers", players);
@@ -60,13 +78,6 @@ io.on("connection", (socket) => {
             players[data.id].isActive = false;
         }
         delete players[data.id]; // Remove player from the game
-        io.emit("updatePlayers", players); // Send updated player list
-    });
-    
-    socket.on("playerActive", (data) => {
-        if (players[data.id]) {
-            players[data.id].isActive = true;
-        }
         io.emit("updatePlayers", players); // Send updated player list
     });
     
