@@ -19,7 +19,11 @@ let players = {};
 function getRandomPosition() {
     return { 
         x: Math.random() * 700 + 50,  // Random x between 50-750
-        y: 200  // Fixed ground level
+        y: 200,  // Fixed ground level
+        health: 100,
+        score: 0,
+        isActive: true,
+        facing: Math.random() > 0.5 ? 1 : -1  // Random initial facing direction
     };
 }
 

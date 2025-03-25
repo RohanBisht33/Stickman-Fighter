@@ -360,13 +360,34 @@ function update() {
 }
 
 socket.on("connect", () => {
-    // Initialize local player when connected
+    // Create local player with server-provided initial position
     localPlayer = new Stickman(100, 300, "blue");
     
+    // Emit initial player data to server
+    socket.emit("playerMove", { 
+        x: localPlayer.x, 
+        y: localPlayer.y,
+        health: localPlayer.health,
+        score: localPlayer.score,
+        facing: localPlayer.facing
+    });
 });
 
+// Modify updatePlayers event handler to properly instantiate players
 socket.on("updatePlayers", (serverPlayers) => {
-    players = serverPlayers;
+    players = {};  // Reset players
+    for (let id in serverPlayers) {
+        if (id !== socket.id) {
+            const playerData = serverPlayers[id];
+            const newPlayer = new Stickman(playerData.x, playerData.y, "red");  // Different color for other players
+            newPlayer.health = playerData.health || 100;
+            newPlayer.score = playerData.score || 0;
+            newPlayer.facing = playerData.facing || 1;
+            newPlayer.isActive = playerData.isActive !== false;
+            players[id] = newPlayer;
+        }
+    }
 });
+
 
 update();
