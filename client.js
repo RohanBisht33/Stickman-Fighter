@@ -319,7 +319,7 @@ window.addEventListener("keyup", (e) => { keys[e.key.toLowerCase()] = false; });
 
 function update() {
     if (localPlayer) {
-        // Movement
+        // Movement logic remains the same
         if (keys['a']) localPlayer.move("left");
         if (keys['d']) localPlayer.move("right");
         if (keys[' ']) localPlayer.jump();
@@ -334,7 +334,7 @@ function update() {
             y: localPlayer.y,
             health: localPlayer.health,
             score: localPlayer.score,
-            facing: localPlayer.facing  // Add facing direction
+            facing: localPlayer.facing
         });
     }
 
@@ -345,49 +345,44 @@ function update() {
         localPlayer.draw(true);
     }
 
-    // Draw other players
-    for (let id in players) {
-        if (id !== socket.id) {
-            let otherPlayer = players[id];
-            if (otherPlayer.isActive){
-                otherPlayer.facing = players[id].facing || 1;
-                otherPlayer.draw();
-        }
-        }
-    }
+    // Draw other players with minimal logging
+    Object.keys(players).forEach(id => {
+        const otherPlayer = players[id];
+        otherPlayer.draw();
+    });
 
     requestAnimationFrame(update);
 }
 
+
 socket.on("connect", () => {
     // Create local player with server-provided initial position
     localPlayer = new Stickman(100, 300, "blue");
-    
-    // Emit initial player data to server
-    socket.emit("playerMove", { 
-        x: localPlayer.x, 
-        y: localPlayer.y,
-        health: localPlayer.health,
-        score: localPlayer.score,
-        facing: localPlayer.facing
-    });
 });
 
-// Modify updatePlayers event handler to properly instantiate players
 socket.on("updatePlayers", (serverPlayers) => {
-    players = {};  // Reset players
-    for (let id in serverPlayers) {
-        if (id !== socket.id) {
+    // Completely reset players
+    players = {};
+    
+    // Only create players that are not the local player and are active
+    Object.keys(serverPlayers).forEach(id => {
+        if (id !== socket.id && serverPlayers[id].isActive === true) {
             const playerData = serverPlayers[id];
-            const newPlayer = new Stickman(playerData.x, playerData.y, "red");  // Different color for other players
+            
+            const newPlayer = new Stickman(playerData.x || 100, playerData.y || 300, "red");
+            newPlayer.x = playerData.x || 100;
+            newPlayer.y = playerData.y || 300;
             newPlayer.health = playerData.health || 100;
             newPlayer.score = playerData.score || 0;
             newPlayer.facing = playerData.facing || 1;
-            newPlayer.isActive = playerData.isActive !== false;
+            newPlayer.isActive = true;
+            
             players[id] = newPlayer;
         }
-    }
+    });
 });
 
+// Reduce console logging
+console.log = function() {};
 
 update();

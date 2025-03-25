@@ -30,19 +30,29 @@ function getRandomPosition() {
 io.on("connection", (socket) => {
     console.log("A player connected:", socket.id);
     
-    // Assign unique initial position
-    players[socket.id] = getRandomPosition();
+    // Remove any previous inactive players
+    Object.keys(players).forEach(id => {
+        if (!players[id].isActive) {
+            delete players[id];
+        }
+    });
+
+    // Create new player
+    players[socket.id] = {
+        id: socket.id,
+        x: Math.random() * 700 + 50,
+        y: 200,
+        health: 100,
+        score: 0,
+        isActive: true,
+        facing: 1
+    };
 
     // Broadcast updated player list to all clients
     io.emit("updatePlayers", players);
 
-    socket.on("playerMove", (data) => {
-        if (players[socket.id]) {
-            players[socket.id].x = data.x;
-            players[socket.id].y = data.y;
-            players[socket.id].health = data.health;
-            players[socket.id].score = data.score;
-        }
+    socket.on("disconnect", () => {
+        delete players[socket.id];
         io.emit("updatePlayers", players);
     });
     socket.on("playerInactive", (data) => {
@@ -60,12 +70,6 @@ io.on("connection", (socket) => {
         io.emit("updatePlayers", players); // Send updated player list
     });
     
-
-    socket.on("disconnect", () => {
-        console.log("Player disconnected:", socket.id);
-        delete players[socket.id];
-        io.emit("updatePlayers", players);
-    });
 });
 
 const PORT = process.env.PORT || 3000;
