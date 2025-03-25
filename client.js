@@ -289,16 +289,17 @@ socket.on("connect", () => {
     localPlayer = new Stickman(100, 300, "blue");
 });
 
-// Server-side socket handling (pseudo-code)
-socket.on('playerMove', (playerData) => {
-    players[socket.id] = {
-        x: playerData.x,
-        y: playerData.y,
-        health: playerData.health,
-        score: playerData.score,
-        facing: playerData.facing  // Store and broadcast facing direction
-    };
-    io.emit('updatePlayers', players);
+socket.on("updatePlayers", (serverPlayers) => {
+    players = serverPlayers;
+    
+    for (let id in players) {
+        if (id !== socket.id) {
+            let otherPlayer = new Stickman(players[id].x, players[id].y, "red");
+            // Use server-provided facing direction
+            otherPlayer.facing = players[id].facing || 1;
+            otherPlayer.draw();
+        }
+    }
 });
 
 update();
