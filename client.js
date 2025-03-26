@@ -244,11 +244,10 @@ class Stickman {
         // Wall collision with immediate bounce
         const wallWidth = 20; // Width of invisible walls
         const bounceStrength = 10; // Stronger bounce to be noticeable
-        
-        const shouldBounce = !this.isDashing && !this.canAirDash;
+    
 
         // Left wall bounce
-        if (this.x < wallWidth && !this.isGrounded && shouldBounce) {
+        if (this.x < wallWidth && !this.isGrounded) {
             this.x = wallWidth;
             // Immediately reverse and amplify horizontal velocity
             this.velX = Math.abs(this.velX) * bounceStrength;
@@ -259,7 +258,7 @@ class Stickman {
 
         
         // Right wall bounce
-        if (this.x > canvas.width - this.width - wallWidth && !this.isGrounded && shouldBounce) {
+        if (this.x > canvas.width - this.width - wallWidth && !this.isGrounded) {
             this.x = canvas.width - this.width - wallWidth;
             // Immediately reverse and amplify horizontal velocity
             this.velX = -Math.abs(this.velX) * bounceStrength;
