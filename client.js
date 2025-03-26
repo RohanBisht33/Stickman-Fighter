@@ -209,6 +209,7 @@ class Stickman {
         // Combat properties
         this.health = 100;
         this.score = 0;
+        this.username = "";
         
         // Animation and combo
         this.lastPunchTime = 0;
