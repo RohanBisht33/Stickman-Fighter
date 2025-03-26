@@ -245,8 +245,10 @@ class Stickman {
         const wallWidth = 20; // Width of invisible walls
         const bounceStrength = 10; // Stronger bounce to be noticeable
         
+        const shouldBounce = !this.isDashing && !this.canAirDash;
+
         // Left wall bounce
-        if (this.x < wallWidth && !this.isGrounded) {
+        if (this.x < wallWidth && !this.isGrounded && shouldBounce) {
             this.x = wallWidth;
             // Immediately reverse and amplify horizontal velocity
             this.velX = Math.abs(this.velX) * bounceStrength;
@@ -257,7 +259,7 @@ class Stickman {
 
         
         // Right wall bounce
-        if (this.x > canvas.width - this.width - wallWidth && !this.isGrounded) {
+        if (this.x > canvas.width - this.width - wallWidth && !this.isGrounded && shouldBounce) {
             this.x = canvas.width - this.width - wallWidth;
             // Immediately reverse and amplify horizontal velocity
             this.velX = -Math.abs(this.velX) * bounceStrength;
@@ -432,15 +434,13 @@ class Stickman {
         let target = this.findOpponent();
         if (target) {
             console.log("Punch executed!", target);
-            window.socket.emit("damagePlayer", { 
+            // Emit an event to handle damage and scoring server-side
+            window.socket.emit("playerPunch", { 
                 targetId: target.id, 
-                damage: 10,
                 attackerId: window.socket.id
             });
             
             this.lastPunchTime = currentTime;
-            
-            // Visual/audio feedback could be added here
         }
     }
     
@@ -451,16 +451,31 @@ class Stickman {
         let target = this.findOpponent();
         if (target) {
             console.log("Kick executed!", target);
-            window.socket.emit("damagePlayer", { 
+            // Emit an event to handle damage and scoring server-side
+            window.socket.emit("playerKick", { 
                 targetId: target.id, 
-                damage: 15,
                 attackerId: window.socket.id
             });
             
             this.lastKickTime = currentTime;
-            
-            // Visual/audio feedback could be added here
         }
+    }
+
+    // Update socket event listeners to handle damage and scoring
+    initializeSocketListeners() {
+        // Listen for health updates
+        window.socket.on("playerHealthUpdate", (data) => {
+            if (data.playerId === window.socket.id) {
+                this.health = data.health;
+            }
+        });
+
+        // Listen for score updates
+        window.socket.on("playerScoreUpdate", (data) => {
+            if (data.playerId === window.socket.id) {
+                this.score = data.score;
+            }
+        });
     }
 
     addCombo(move) {
@@ -660,6 +675,8 @@ function update() {
             // Create local player with initial position
             localPlayer = new Stickman(100, canvas.height - 150, "blue");
             localPlayer.username = username;
+
+            localPlayer.initializeSocketListeners();
             
             // Emit player move with game started flag and username
             window.socket.emit("playerMove", { 
