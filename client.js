@@ -632,7 +632,7 @@ function update() {
                 otherPlayer.facing = -enemy.facing;
                 otherPlayer.velX = -enemy.velX;
 
-                otherPlayer.username = enemy.username || 'Unknown';
+                otherPlayer.username = enemy.username;
                 otherPlayer.draw();
             }
         }
@@ -671,7 +671,7 @@ function update() {
                 health: localPlayer.health,
                 score: localPlayer.score,
                 facing: localPlayer.facing,
-                username: username, // Explicitly send username
+                username: localPlayer.username, // Explicitly send username
                 isGameStarted: true
             });
         });
