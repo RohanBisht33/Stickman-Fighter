@@ -277,7 +277,34 @@ class Stickman {
     update() {
         // Horizontal movement
         this.x += this.velX;
-        this.velX *= 0.8;  // Friction
+    
+        // Wall collision with immediate bounce
+        const wallWidth = 20; // Width of invisible walls
+        const bounceStrength = 10; // Stronger bounce to be noticeable
+        
+        // Left wall bounce
+        if (this.x < wallWidth && !this.isGrounded) {
+            this.x = wallWidth;
+            // Immediately reverse and amplify horizontal velocity
+            this.velX = Math.abs(this.velX) * bounceStrength;
+        }
+        else if(this.x < wallWidth && this.isGrounded){
+            this.x = wallWidth;
+        }
+
+        
+        // Right wall bounce
+        if (this.x > canvas.width - this.width - wallWidth && !this.isGrounded) {
+            this.x = canvas.width - this.width - wallWidth;
+            // Immediately reverse and amplify horizontal velocity
+            this.velX = -Math.abs(this.velX) * bounceStrength;
+        }
+        else if(this.x > canvas.width - this.width - wallWidth && this.isGrounded){
+            this.x = wallWidth;
+        }
+
+        // Friction (apply after bounce to maintain bounce effect)
+        this.velX *= 0.8;
 
         // Vertical movement
         this.velY += this.gravity;
@@ -296,20 +323,6 @@ class Stickman {
             this.jumpsRemaining = this.maxJumps;
             this.jumpCooldown = 0;
             this.canAirDash = false;
-        }
-        const wallWidth = 20; // Width of invisible walls
-        const bounceStrength = 10;
-        
-        // Left wall
-        if (this.x < wallWidth) {
-            this.x = wallWidth;
-            this.velX = Math.abs(this.velX) * bounceStrength;
-        }
-        
-        // Right wall
-        if (this.x > canvas.width - this.width - wallWidth) {
-            this.x = canvas.width - this.width - wallWidth;
-            this.velX = -Math.abs(this.velX) * bounceStrength;
         }
         
         if (this.health <= 0) {
