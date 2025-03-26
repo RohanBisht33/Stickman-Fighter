@@ -442,7 +442,7 @@ function update() {
         for (let id in players) {
             if (id !== window.socket.id && players[id].isGameStarted) {
                 let enemy = players[id];
-                let mirroredX = canvas.width - (enemy.x - localPlayer.x) - localPlayer.width;
+                let mirroredX = (canvas.width - enemy.x) - localPlayer.width;
 
                 if (checkCollision(localPlayer, { x: mirroredX, y: enemy.y, width: 100, height: 100 })) {
                     if (localPlayer.x < mirroredX) {
@@ -496,7 +496,7 @@ function update() {
         for (let id in players) {
             if (id !== window.socket.id && players[id].isGameStarted) {
                 let enemy = players[id];
-                let mirroredX = canvas.width - enemy.x - localPlayer.width;
+                let mirroredX = (canvas.width - enemy.x) - localPlayer.width;
 
                 let otherPlayer = new Stickman(mirroredX, enemy.y, "red");
                 otherPlayer.facing = -enemy.facing;
