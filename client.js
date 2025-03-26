@@ -422,16 +422,40 @@ window.addEventListener("keydown", (e) => {
 });
 window.addEventListener("keyup", (e) => { keys[e.key.toLowerCase()] = false; });
 
+function checkCollision(player, enemy) {
+    return (
+        player.x < enemy.x + enemy.width &&
+        player.x + player.width > enemy.x &&
+        player.y < enemy.y + enemy.height &&
+        player.y + player.height > enemy.y
+    );
+}
+
 function update() {
     if (!isGameStarted) {
         requestAnimationFrame(update);
         return;
     }
+    if (localPlayer) {
+        let canMoveLeft = true;
+        let canMoveRight = true;
+        for (let id in players) {
+            if (id !== window.socket.id && players[id].isGameStarted) {
+                let enemy = players[id];
+                let mirroredX = canvas.width - (enemy.x - localPlayer.x) - localPlayer.width;
 
-    else if (localPlayer) {
+                if (checkCollision(localPlayer, { x: mirroredX, y: enemy.y, width: 100, height: 100 })) {
+                    if (localPlayer.x < mirroredX) {
+                        canMoveRight = false; // Block right movement
+                    } else {
+                        canMoveLeft = false; // Block left movement
+                    }
+                }
+            }
+        }
         // Movement logic
-        if (keys['a']) localPlayer.move("left");
-        if (keys['d']) localPlayer.move("right");
+        if (keys['a'] && canMoveLeft) localPlayer.move("left");
+        if (keys['d'] && canMoveRight) localPlayer.move("right");
         if (keys[' ']) localPlayer.jump();
         if (keys['shift']) localPlayer.airDash();
         if (keys['j']) localPlayer.punch();
@@ -447,8 +471,8 @@ function update() {
             facing: localPlayer.facing,
             isGameStarted: true
         });
-    }
 
+    }
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     // Fill ground
     ctx.fillStyle = '#8B4513';  // Earthy brown color
