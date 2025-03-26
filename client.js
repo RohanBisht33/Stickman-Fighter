@@ -6,12 +6,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const startButton = document.getElementById("startButton");
 });
 const welcomeScreen = document.getElementById("welcomeScreen");
-const mobileControlsContainer = document.getElementById("mobile-controls");
 
 let players = {};
 let localPlayer = null;
 let isGameStarted = false;
-let isMobile = window.innerWidth <= 768;
 
 function validateUsername() {
     const username = usernameInput.value.trim();
@@ -63,92 +61,7 @@ function resizeCanvas() {
     canvas.style.width = '100%';
     canvas.style.height = '100%';
 
-    // Toggle mobile controls
-    if (window.innerWidth <= 768) {
-        isMobile = true;
-        mobileControlsContainer.style.display = 'flex';
-        setupMobileControls();
-    } else {
-        isMobile = false;
-        mobileControlsContainer.style.display = 'none';
-    }
 }
-function setupMobileControls() {
-    const leftBtn = document.getElementById('mobile-left');
-    const rightBtn = document.getElementById('mobile-right');
-    const jumpBtn = document.getElementById('mobile-jump');
-    const punchBtn = document.getElementById('mobile-punch');
-    const kickBtn = document.getElementById('mobile-kick');
-
-    // Prevent default touch behaviors
-    [leftBtn, rightBtn, jumpBtn, punchBtn, kickBtn].forEach(btn => {
-        btn.addEventListener('touchstart', (e) => {
-            e.preventDefault(); // Prevent default touch actions
-        }, { passive: false });
-    });
-
-    // Touch event handlers with improved control
-    function startMove(direction) {
-        keys[direction] = true;
-        // Optional: Add visual feedback
-        document.getElementById(`mobile-${direction}`).classList.add('active');
-    }
-
-    function stopMove(direction) {
-        keys[direction] = false;
-        // Remove visual feedback
-        document.getElementById(`mobile-${direction}`).classList.remove('active');
-    }
-
-    // Directional controls
-    leftBtn.addEventListener('touchstart', () => startMove('a'), { passive: false });
-    leftBtn.addEventListener('touchend', () => stopMove('a'), { passive: false });
-    leftBtn.addEventListener('touchcancel', () => stopMove('a'), { passive: false });
-    
-    rightBtn.addEventListener('touchstart', () => startMove('d'), { passive: false });
-    rightBtn.addEventListener('touchend', () => stopMove('d'), { passive: false });
-    rightBtn.addEventListener('touchcancel', () => stopMove('d'), { passive: false });
-    
-    // Action buttons
-    jumpBtn.addEventListener('touchstart', () => {
-        if (localPlayer) localPlayer.jump();
-    }, { passive: false });
-    
-    punchBtn.addEventListener('touchstart', () => {
-        if (localPlayer) localPlayer.punch();
-    }, { passive: false });
-    
-    kickBtn.addEventListener('touchstart', () => {
-        if (localPlayer) localPlayer.kick();
-    }, { passive: false });
-}
-
-// Add CSS for active state
-const activeButtonStyle = `
-.mobile-btn.active {
-    background-color: #45a049;
-    transform: scale(0.95);
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-}
-`;
-const styleSheet = document.createElement("style");
-styleSheet.innerText = activeButtonStyle;
-document.head.appendChild(styleSheet);
-
-function handleOrientation(event) {
-    if (!isMobile || !localPlayer) return;
-
-    const beta = event.beta; // Front to back tilt
-    const gamma = event.gamma; // Left to right tilt
-
-    // Simple tilt-based movement
-    if (gamma > 10) {
-        localPlayer.move("right");
-    } else if (gamma < -10) {
-        localPlayer.move("left");
-    }
-}
-
 // Call on load and window resize
 window.addEventListener('load', resizeCanvas);
 window.addEventListener('resize', resizeCanvas);
@@ -205,6 +118,14 @@ class Stickman {
         this.canAirDash = true;
         this.spacePressed = false;
         
+        //dash
+        this.dashCooldown = 0;
+        this.canDash = true; // Allow dash only when grounded
+        this.dashDuration = 1; // Frames of dash
+        this.isDashing = false;
+        this.dashKeyHoldTime = 0;
+        this.dashKeyThreshold = 100;
+        
         // Combat properties
         this.health = 100;
         this.score = 0;
@@ -254,6 +175,7 @@ class Stickman {
             this.velY = this.jumpPower;
             this.jumpsRemaining--;
             this.isGrounded = false;
+            this.canDash = false;
             this.canAirDash = true;
             this.jumpCooldown = 10;
             keys[' '] = false; // Prevent continuous jumping
@@ -273,8 +195,49 @@ class Stickman {
             this.canAirDash = false;
         }
     }
+    Dash() {
+        if (this.canDash && !this.isDashing && this.dashCooldown === 0) {
+            const dashSpeed = 80;
+            this.velX = this.facing * dashSpeed;
+            this.isDashing = true;
+            this.dashDuration = 10; // 10 frames of dash
+            this.canDash = false;
+        }
+    }
 
     update() {
+
+        if (keys['q']) {
+            this.dashKeyHoldTime++;
+        } else {
+            this.dashKeyHoldTime = 0;
+        }
+
+        // Dash activation after holding key for specified duration
+        if (this.dashKeyHoldTime >= this.dashKeyThreshold && this.canDash) {
+            this.Dash();
+            this.dashKeyHoldTime = 0; // Reset hold time
+        }
+
+        // Dash cooldown and duration management
+        if (this.isDashing) {
+            this.dashDuration--;
+            if (this.dashDuration <= 0) {
+                this.isDashing = false;
+                this.canDash = false;
+                this.dashCooldown = 120; // 2 seconds cooldown at 30 fps
+            }
+        }
+
+        // Cooldown management
+        if (this.dashCooldown > 0) {
+            this.dashCooldown--;
+        }
+
+        // Reset dash ability when grounded
+        if (this.isGrounded) {
+            this.canDash = true;
+        }
         // Horizontal movement
         this.x += this.velX;
     
@@ -323,6 +286,7 @@ class Stickman {
             this.isGrounded = true;
             this.jumpsRemaining = this.maxJumps;
             this.jumpCooldown = 0;
+            this.canDash = true;
             this.canAirDash = false;
         }
         
@@ -421,10 +385,13 @@ class Stickman {
     
     // Modify draw method to include username
     draw(isLocalPlayer = false) {
+        if (this.isDashing) {
+            ctx.globalAlpha = 0.3; // Make slightly transparent when dashing
+        }
         this.drawUsername(); // Add username above stickman
         this.drawStickman();
 
-        
+        ctx.globalAlpha = 1;
         if (isLocalPlayer) {
             this.updateHealthDisplay();
             this.updateScoreDisplay();
@@ -544,26 +511,41 @@ class Stickman {
 }
 
 // Handle input
-let keys = {};
-window.addEventListener("keydown", (e) => { 
-    if (!isGameStarted) return; // Prevent input before game starts
+document.addEventListener('DOMContentLoaded', () => {
+    // Ensure keys object exists
+    let keys = {};
 
-    keys[e.key.toLowerCase()] = true;
-    // Combo input
-    if (localPlayer) {
-        switch(e.key.toLowerCase()) {
-            case 'j': 
-                localPlayer.punch();
-                localPlayer.addCombo('punch');
-                break;
-            case 'k': 
-                localPlayer.kick();
-                localPlayer.addCombo('kick');
-                break;
+    // Wrap event listeners to ensure they're only added after DOM is loaded
+    window.addEventListener("keydown", (e) => { 
+        if (!isGameStarted) return; // Prevent input before game starts
+
+        // Safely handle key input
+        const key = e.key ? e.key.toLowerCase() : '';
+        keys[key] = true;
+
+        // Combo input with null check
+        if (localPlayer) {
+            switch(key) {
+                case 'j': 
+                    localPlayer.punch();
+                    localPlayer.addCombo('punch');
+                    break;
+                case 'k': 
+                    localPlayer.kick();
+                    localPlayer.addCombo('kick');
+                    break;
+            }
         }
-    }
+    });
+
+    window.addEventListener("keyup", (e) => { 
+        const key = e.key ? e.key.toLowerCase() : '';
+        keys[key] = false; 
+    });
+
+    // Expose keys to global scope if needed
+    window.keys = keys;
 });
-window.addEventListener("keyup", (e) => { keys[e.key.toLowerCase()] = false; });
 
 function checkCollision(player1, player2) {
     const hitboxReduction = 0.6; // Reduce hitbox size for more precise collision
