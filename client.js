@@ -472,8 +472,8 @@ function update() {
         for (let id in players) {
             if (id !== window.socket.id && players[id].isGameStarted) {
                 console.log(window.socket.id);
-                let otherPlayer = new Stickman(players[id].x, players[id].y, "red");
-                otherPlayer.facing = players[id].facing || 1;
+                let otherPlayer = new Stickman(1400, players[id].y, "red");
+                otherPlayer.facing = -players[id].facing;
                 otherPlayer.draw();
             }
         }
