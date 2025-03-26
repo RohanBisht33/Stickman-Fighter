@@ -2,16 +2,13 @@ const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 const startButton = document.getElementById("startButton");
 const welcomeScreen = document.getElementById("welcomeScreen");
-
-const socket = io("https://stickman-fighter.onrender.com/"); // Connect to server
-
-window.addEventListener("beforeunload", () => {
-    socket.emit("playerInactive", { id: socket.id });
-});
-
 let players = {};
 let localPlayer = null;
 let isGameStarted = false;
+
+window.addEventListener("beforeunload", () => {
+    window.socket.emit("playerInactive", { id: window.socket.id });
+});
 
 function resizeCanvas() {
     const gameContainer = document.querySelector(".game-container");
@@ -27,13 +24,6 @@ function resizeCanvas() {
 // Call on load and window resize
 window.addEventListener('load', resizeCanvas);
 window.addEventListener('resize', resizeCanvas);
-
-// Start game event listener
-startButton.addEventListener('click', () => {
-    welcomeScreen.style.display = 'none';
-    resizeCanvas();
-    isGameStarted = true;
-});
 
 function updateHealthDisplay() {
     const healthFill = document.getElementById('localHealth');
@@ -217,7 +207,7 @@ class Stickman {
         let minDistance = 50;  // Adjust attack range
     
         for (let id in players) {
-            if (id !== socket.id) { // Don't hit yourself
+            if (id !== window.socket.id) { // Don't hit yourself
                 let opponent = players[id];
                 let distance = Math.abs(this.x - opponent.x);
     
@@ -239,7 +229,7 @@ class Stickman {
             target.health -= 5;
             console.log(`Punch opponent! New health: ${target.health}`);
     
-            socket.emit("updateHealth", { id: target.id, health: target.health });
+            window.socket.emit("updateHealth", { id: target.id, health: target.health });
         }
     }
 
@@ -252,7 +242,7 @@ class Stickman {
             target.health -= 5;
             console.log(`Kick opponent! New health: ${target.health}`);
     
-            socket.emit("updateHealth", { id: target.id, health: target.health });
+            window.socket.emit("updateHealth", { id: target.id, health: target.health });
         }
     }
 
@@ -281,7 +271,7 @@ class Stickman {
                     target.health -= 15;
                     console.log(`punch-punch opponent! New health: ${target.health}`);
             
-                    socket.emit("updateHealth", { id: target.id, health: target.health });
+                    window.socket.emit("updateHealth", { id: target.id, health: target.health });
                 }
                 break;
             case 'kick,punch':
@@ -290,7 +280,7 @@ class Stickman {
                     target.health -= 20;
                     console.log(`Kick-punch opponent! New health: ${target.health}`);
             
-                    socket.emit("updateHealth", { id: target.id, health: target.health });
+                    window.socket.emit("updateHealth", { id: target.id, health: target.health });
                 }
                 break;
         }
@@ -325,7 +315,7 @@ function update() {
         return;
     }
 
-    if (localPlayer) {
+    else if (localPlayer) {
         // Movement logic
         if (keys['a']) localPlayer.move("left");
         if (keys['d']) localPlayer.move("right");
@@ -336,12 +326,13 @@ function update() {
 
         localPlayer.update();
 
-        socket.emit("playerMove", { 
+        window.socket.emit("playerMove", { 
             x: localPlayer.x, 
             y: localPlayer.y,
             health: localPlayer.health,
             score: localPlayer.score,
-            facing: localPlayer.facing
+            facing: localPlayer.facing,
+            isGameStarted: true
         });
     }
 
@@ -353,8 +344,10 @@ function update() {
     }
 
     // Draw other players
+    
         for (let id in players) {
-            if (id !== socket.id) {
+            if (id !== window.socket.id && players[id].isGameStarted) {
+                console.log(window.socket.id);
                 let otherPlayer = new Stickman(players[id].x, players[id].y, "red");
                 otherPlayer.facing = players[id].facing || 1;
                 otherPlayer.draw();
@@ -364,13 +357,33 @@ function update() {
     requestAnimationFrame(update);
 }
 
-socket.on("connect", () => {
-    // Create local player with initial position
-    localPlayer = new Stickman(100, canvas.height - 150, "blue");
-});
+startButton.addEventListener('click', () => {
+    welcomeScreen.style.display = 'none';
+    resizeCanvas();
+    isGameStarted = true;
+    window.socket = io("https://stickman-fighter.onrender.com/"); // Connect to server
 
-socket.on("updatePlayers", (serverPlayers) => {
-    players = serverPlayers;
+    window.socket.on("connect", () => {
+        // Create local player with initial position
+        localPlayer = new Stickman(100, canvas.height - 150, "blue");
+        
+        // Emit player move with game started flag
+        window.socket.emit("playerMove", { 
+            x: localPlayer.x, 
+            y: localPlayer.y,
+            health: localPlayer.health,
+            score: localPlayer.score,
+            facing: localPlayer.facing,
+            isGameStarted: true
+        });
+    });
+    
+    window.socket.on("updatePlayers", (serverPlayers) => {
+        players = serverPlayers;
+    });
+    window.socket.on("disconnect", (id) => {
+        delete players[id];
+    });
 });
 
 // Reduce console logging
