@@ -318,7 +318,7 @@ class Stickman {
             if (id !== window.socket.id) {
                 let enemy = players[id];
                 let mirroredX = (canvas.width - enemy.x) - this.width;
-    
+                
                 let enemyStickman = new Stickman(mirroredX, enemy.y, "red");
                 
                 // Only log collision, no movement restriction
@@ -405,8 +405,9 @@ class Stickman {
     
     // Modify draw method to include username
     draw(isLocalPlayer = false) {
-        this.drawStickman();
         this.drawUsername(); // Add username above stickman
+        this.drawStickman();
+
         
         if (isLocalPlayer) {
             this.updateHealthDisplay();
@@ -582,6 +583,7 @@ function update() {
             health: localPlayer.health,
             score: localPlayer.score,
             facing: localPlayer.facing,
+            username: localPlayer.username,
             isGameStarted: true
         });
 

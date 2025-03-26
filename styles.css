@@ -1,3 +1,44 @@
+body {
+    margin: 0;
+    font-family: 'Orbitron', 'Arial', sans-serif;
+    background-color: #ffffff;
+    overflow: hidden;
+    color: #e0e0e0;
+    user-select: none;
+}
+
+.welcome-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(45deg, #1a1a2e, #16213e);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    color: white;
+    text-align: center;
+}
+
+.welcome-content {
+    background: rgba(30, 30, 30, 0.7);
+    padding: 40px;
+    border-radius: 20px;
+    max-width: 500px;
+    width: 90%;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.welcome-content h1 {
+    margin-bottom: 20px;
+    color: #4CAF50;
+    font-size: 2.5em;
+    letter-spacing: 2px;
+}
+
 .controls-preview {
     margin: 30px 0;
     display: flex;
@@ -26,6 +67,117 @@
 .control-desc {
     color: #e0e0e0;
     font-size: 1em;
+}
+
+#startButton {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    padding: 12px 25px;
+    font-size: 1.2em;
+    cursor: pointer;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+}
+
+#startButton:hover {
+    background-color: #45a049;
+    transform: scale(1.05);
+    box-shadow: 0 6px 8px rgba(0,0,0,0.3);
+}
+
+.game-container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(45deg, #1a1a2e, #16213e);
+}
+
+#gameCanvas {
+    flex-grow: 1;
+    background: linear-gradient(to bottom, #2c3e50, #34495e);
+    box-shadow: 0 -10px 20px rgba(0,0,0,0.2);
+}
+
+.game-info {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    padding: 20px;
+    box-sizing: border-box;
+    z-index: 10;
+}
+
+.player-stats {
+    display: flex;
+    gap: 30px;
+    align-items: center;
+    backdrop-filter: blur(10px);
+    border-radius: 15px;
+    padding: 15px;
+    background: rgba(30,30,30,0.5);
+}
+
+.health-container, .score-container, .jump-status {
+    background-color: rgba(50,50,50,0.6);
+    border-radius: 12px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 120px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    transition: transform 0.2s ease;
+}
+
+.health-container:hover, 
+.score-container:hover, 
+.jump-status:hover {
+    transform: scale(1.05);
+}
+
+.health-label, .score-label, .jump-label {
+    font-size: 14px;
+    margin-bottom: 8px;
+    color: #4CAF50;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.health-bar {
+    width: 100%;
+    height: 20px;
+    background-color: #333;
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.health-fill {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to right, #4CAF50, #81c784);
+    transition: width 0.3s ease, background 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    color: white;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+}
+
+.score, .jump-remaining {
+    font-size: 24px;
+    font-weight: bold;
+    color: #4CAF50;
 }
 
 .game-controls {
@@ -68,84 +220,36 @@
 .key-item span:hover {
     background-color: #4CAF50;
     color: #121212;
-}/* Base Reset and Variables */
-:root {
-    --primary-color: #4CAF50;
-    --secondary-color: #81c784;
-    --background-dark: #1a1a2e;
-    --background-medium: #16213e;
-    --text-light: #e0e0e0;
-    --text-dark: #121212;
 }
-
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
-body {
-    font-family: 'Orbitron', 'Arial', sans-serif;
-    background-color: var(--background-dark);
-    color: var(--text-light);
-    overflow: hidden;
-    user-select: none;
-}
-
-/* Welcome Screen Styles */
-.welcome-screen {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(45deg, var(--background-dark), var(--background-medium));
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-    text-align: center;
-}
-
-.welcome-content {
-    background: rgba(30, 30, 30, 0.7);
-    padding: 40px;
-    border-radius: 20px;
-    width: 90%;
-    max-width: 500px;
-    backdrop-filter: blur(10px);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-}
-
-.welcome-content h1 {
-    margin-bottom: 20px;
-    color: var(--primary-color);
-    font-size: 2.5em;
-    letter-spacing: 2px;
-}
-
-/* Username Input Styles */
 .username-container {
-    margin: 20px 0;
     display: flex;
     flex-direction: column;
     align-items: center;
+    margin: 20px 0;
+    width: 100%;
+}
+
+.username-input-wrapper {
+    position: relative;
+    width: 100%;
+    max-width: 300px;
 }
 
 .username-input {
     width: 100%;
-    max-width: 300px;
     padding: 12px 12px 12px 40px;
-    border: 2px solid var(--primary-color);
+    border: 2px solid #4CAF50;
     border-radius: 25px;
     background-color: rgba(50, 50, 50, 0.7);
-    color: var(--primary-color);
+    color: #4CAF50;
     font-size: 16px;
     outline: none;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
 }
 
 .username-input:focus {
-    border-color: var(--secondary-color);
+    border-color: #81c784;
     box-shadow: 0 0 10px rgba(76, 175, 80, 0.3);
 }
 
@@ -154,111 +258,53 @@ body {
     left: 12px;
     top: 50%;
     transform: translateY(-50%);
-    color: var(--primary-color);
+    color: #4CAF50;
     font-size: 20px;
+    pointer-events: none;
 }
 
-.error-message {
-    color: #f44336;
+.username-input:focus + .input-icon {
+    color: #81c784;
+}
+
+.username-validation {
     margin-top: 10px;
     height: 20px;
 }
 
-/* Start Button */
-#startButton {
-    background-color: var(--primary-color);
-    color: white;
-    border: none;
-    padding: 12px 25px;
-    font-size: 1.2em;
-    cursor: pointer;
-    border-radius: 10px;
-    transition: all 0.3s ease;
-}
-
-#startButton:hover {
-    background-color: var(--secondary-color);
-    transform: scale(1.05);
-}
-
-/* Game Container */
-.game-container {
-    position: relative;
-    width: 100vw;
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-    background: linear-gradient(45deg, var(--background-dark), var(--background-medium));
-}
-
-#gameCanvas {
-    flex-grow: 1;
-    background: linear-gradient(to bottom, #2c3e50, #34495e);
-}
-
-/* Game Info */
-.game-info {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    display: flex;
-    justify-content: space-between;
-    padding: 20px;
-    z-index: 10;
-}
-
-.player-stats {
-    display: flex;
-    gap: 30px;
-    align-items: center;
-    backdrop-filter: blur(10px);
-    border-radius: 15px;
-    padding: 15px;
-    background: rgba(30,30,30,0.5);
-}
-
-.health-container, .score-container {
-    background-color: rgba(50,50,50,0.6);
-    border-radius: 12px;
-    padding: 12px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    min-width: 120px;
-}
-
-.health-label, .score-label {
+.error-message {
+    color: #f44336;
     font-size: 14px;
-    margin-bottom: 8px;
-    color: var(--primary-color);
-    text-transform: uppercase;
+    text-align: center;
 }
+@media screen and (max-width: 768px) {
+    /* Force horizontal orientation */
+    body {
+        overflow: hidden;
+    }
 
-.health-bar {
-    width: 100%;
-    height: 20px;
-    background-color: #333;
-    border-radius: 15px;
-    overflow: hidden;
-}
+    /* Prevent vertical view */
+    @media (orientation: portrait) {
+        body::before {
+            content: 'Please rotate your device';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2em;
+            z-index: 9999;
+        }
 
-.health-fill {
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
-    transition: width 0.3s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    color: white;
-}
-
-.score {
-    font-size: 24px;
-    font-weight: bold;
-    color: var(--primary-color);
+        .game-container, #gameCanvas, .welcome-screen {
+            display: none;
+        }
+    }
 }
 
 /* Mobile Controls */
@@ -273,64 +319,123 @@ body {
     z-index: 100;
 }
 
+.mobile-movement {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.mobile-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
 .mobile-btn {
     background-color: rgba(76, 175, 80, 0.7);
     color: white;
-    border: 2px solid var(--primary-color);
+    border: 2px solid #4CAF50;
     padding: 8px 15px;
     border-radius: 10px;
     font-size: 12px;
     cursor: pointer;
+    text-transform: uppercase;
     transition: all 0.3s ease;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+    touch-action: manipulation;
 }
 
 .mobile-btn:active {
-    background-color: var(--secondary-color);
+    background-color: #45a049;
     transform: scale(0.95);
 }
+/* Add these mobile-specific styles at the end of your existing styles.css */
+@media screen and (max-width: 768px) and (max-height: 332px) {
+    body {
+        transform: rotate(90deg);
+        transform-origin: left bottom;
+        width: 100vh;
+        height: 100vw;
+        overflow: hidden;
+        position: absolute;
+        top: 0;
+        left: 0;
+    }
+    .username-input {
+        font-size: 14px;
+        padding: 10px 10px 10px 35px;
+    }
 
-/* Responsive Design */
-@media screen and (max-width: 768px) {
-    /* Mobile-specific adjustments */
-    .welcome-content {
-        padding: 20px;
+    .input-icon {
+        font-size: 16px;
+    }
+    .game-container {
+        height: 100vw;
+        width: 100vh;
+    }
+
+    #gameCanvas {
+        transform: scale(0.6);
+        height: 100vh;
     }
 
     .game-info {
-        flex-direction: column;
-        padding: 10px;
+        transform: scale(0.6);
+        padding: 5px;
     }
 
     .player-stats {
-        width: 100%;
-        justify-content: space-around;
+        transform: scale(0.7);
     }
 
     .mobile-controls {
-        justify-content: center;
-        gap: 10px;
-    }
-}
-
-/* Orientation Lock for Mobile */
-@media screen and (max-width: 768px) and (orientation: portrait) {
-    body::before {
-        content: 'Please Rotate Your Device';
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0,0,0,0.8);
-        color: white;
         display: flex;
-        justify-content: center;
+        justify-content: space-between;
         align-items: center;
-        font-size: 2em;
-        z-index: 9999;
+        width: 100%;
+        padding: 15px;
+        background: rgba(30, 30, 30, 0.8);
+        border-top: 2px solid #4CAF50;
+        box-shadow: 0 -5px 15px rgba(0,0,0,0.2);
     }
-
-    .game-container, #gameCanvas, .welcome-screen {
-        display: none;
+    
+    .mobile-movement, .mobile-actions {
+        display: flex;
+        gap: 15px;
+    }
+    
+    .mobile-btn {
+        background-color: rgba(76, 175, 80, 0.7);
+        color: white;
+        border: 2px solid #4CAF50;
+        padding: 12px 20px;
+        border-radius: 15px;
+        font-size: 14px;
+        cursor: pointer;
+        text-transform: uppercase;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        touch-action: manipulation;
+        user-select: none;
+    }
+    
+    .mobile-btn:active {
+        background-color: #45a049;
+        transform: scale(0.95);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    
+    /* Enhanced hover and focus states for desktop */
+    @media (hover: hover) {
+        .mobile-btn:hover {
+            background-color: rgba(76, 175, 80, 0.9);
+            transform: scale(1.05);
+        }
+    }
+    
+    /* Accessibility improvements */
+    .mobile-btn:focus {
+        outline: 3px solid rgba(76, 175, 80, 0.5);
+        outline-offset: 2px;
     }
 }
