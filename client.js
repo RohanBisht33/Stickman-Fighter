@@ -298,18 +298,20 @@ class Stickman {
             this.canAirDash = false;
         }
         const wallWidth = 20; // Width of invisible walls
+        const bounceStrength = 10;
         
         // Left wall
         if (this.x < wallWidth) {
             this.x = wallWidth;
-            this.velX = 0;
+            this.velX = Math.abs(this.velX) * bounceStrength;
         }
         
         // Right wall
         if (this.x > canvas.width - this.width - wallWidth) {
             this.x = canvas.width - this.width - wallWidth;
-            this.velX = 0;
+            this.velX = -Math.abs(this.velX) * bounceStrength;
         }
+        
         if (this.health <= 0) {
             this.die();
         }
@@ -420,32 +422,35 @@ class Stickman {
 
     findOpponent() {
         let closest = null;
-        let minDistance = 100;  // Increased attack range for more precise hit detection
-        let maxDistance = 200;  // Maximum distance for attack
-    
+        let minDistance = Infinity;
+        
         for (let id in players) {
-            if (id !== window.socket.id) { // Don't hit yourself
+            if (id !== window.socket.id) {
                 let opponent = players[id];
                 let distance = Math.abs(this.x - opponent.x);
-    
-                // Check if opponent is in the correct facing direction and within range
-                if (distance < maxDistance && 
-                    ((this.facing === 1 && opponent.x > this.x) || 
-                     (this.facing === -1 && opponent.x < this.x))) {
+                
+                // More nuanced direction checking
+                let isInFacingDirection = 
+                    (this.facing === 1 && opponent.x > this.x) || 
+                    (this.facing === -1 && opponent.x < this.x);
+                
+                if (isInFacingDirection && distance < minDistance) {
                     closest = opponent;
-                    break;
+                    minDistance = distance;
                 }
             }
         }
+        
         return closest;
     }
     
     punch() {
         const currentTime = Date.now();
-        if (this.lastPunchTime && currentTime - this.lastPunchTime < 500) return;
+        if (this.lastPunchTime && currentTime - this.lastPunchTime < 300) return;
         
         let target = this.findOpponent();
         if (target) {
+            console.log("Punch executed!", target);
             window.socket.emit("damagePlayer", { 
                 targetId: target.id, 
                 damage: 10,
@@ -453,15 +458,18 @@ class Stickman {
             });
             
             this.lastPunchTime = currentTime;
+            
+            // Visual/audio feedback could be added here
         }
     }
     
     kick() {
         const currentTime = Date.now();
-        if (this.lastKickTime && currentTime - this.lastKickTime < 500) return;
+        if (this.lastKickTime && currentTime - this.lastKickTime < 300) return;
         
         let target = this.findOpponent();
         if (target) {
+            console.log("Kick executed!", target);
             window.socket.emit("damagePlayer", { 
                 targetId: target.id, 
                 damage: 15,
@@ -469,6 +477,8 @@ class Stickman {
             });
             
             this.lastKickTime = currentTime;
+            
+            // Visual/audio feedback could be added here
         }
     }
 
@@ -528,8 +538,14 @@ window.addEventListener("keydown", (e) => {
     // Combo input
     if (localPlayer) {
         switch(e.key.toLowerCase()) {
-            case 'j': localPlayer.addCombo('punch'); break;
-            case 'k': localPlayer.addCombo('kick'); break;
+            case 'j': 
+                localPlayer.punch();
+                localPlayer.addCombo('punch');
+                break;
+            case 'k': 
+                localPlayer.kick();
+                localPlayer.addCombo('kick');
+                break;
         }
     }
 });
