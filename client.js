@@ -300,7 +300,8 @@ class Stickman {
             this.velX = -Math.abs(this.velX) * bounceStrength;
         }
         else if(this.x > canvas.width - this.width - wallWidth && this.isGrounded){
-            this.x = wallWidth;
+            //this.x = wallWidth; for teleportation purposes
+            this.x = canvas.width - this.width - wallWidth;
         }
 
         // Friction (apply after bounce to maintain bounce effect)
