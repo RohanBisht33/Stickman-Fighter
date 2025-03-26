@@ -432,11 +432,10 @@ class Stickman {
         
         let target = this.findOpponent();
         if (target) {
-            console.log("Punch executed!", target);
-            // Emit an event to handle damage and scoring server-side
-            window.socket.emit("playerPunch", { 
+            window.socket.emit("damagePlayer", { 
                 targetId: target.id, 
-                attackerId: window.socket.id
+                attackerId: window.socket.id,
+                damage: 10  // Punch does 10 damage
             });
             
             this.lastPunchTime = currentTime;
@@ -449,11 +448,10 @@ class Stickman {
         
         let target = this.findOpponent();
         if (target) {
-            console.log("Kick executed!", target);
-            // Emit an event to handle damage and scoring server-side
-            window.socket.emit("playerKick", { 
+            window.socket.emit("damagePlayer", { 
                 targetId: target.id, 
-                attackerId: window.socket.id
+                attackerId: window.socket.id,
+                damage: 15  // Kick does 15 damage
             });
             
             this.lastKickTime = currentTime;
