@@ -132,7 +132,6 @@ const activeButtonStyle = `
 }
 `;
 const styleSheet = document.createElement("style");
-styleSheet.type = "text/css";
 styleSheet.innerText = activeButtonStyle;
 document.head.appendChild(styleSheet);
 
