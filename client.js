@@ -597,7 +597,7 @@ function update() {
             if (id !== window.socket.id && players[id].isGameStarted) {
                 let enemy = players[id];
                 let mirroredX = (canvas.width - enemy.x) - localPlayer.width;
-                let normalizedY = (enemy.y / 475) * canvas.height; // Assuming 800 is the default height
+                let normalizedY = (enemy.y / 479) * canvas.height; // Assuming 800 is the default height
                 let otherPlayer = new Stickman(mirroredX, normalizedY, "red");
 
                 otherPlayer.facing = -enemy.facing;
