@@ -110,6 +110,7 @@ class Stickman {
         
         // State tracking
         this.facing = 1; // 1 for right, -1 for left
+        this.isColliding = false;
         // Enhanced jump tracking
         this.maxJumps = 2;  // Maximum number of jumps
         this.jumpsRemaining = this.maxJumps;
@@ -303,7 +304,7 @@ class Stickman {
                 let enemyStickman = new Stickman(mirroredX, enemy.y, "red");
                 
                 // Only log collision, no movement restriction
-                if (checkCollision(this, enemyStickman)) {
+                if (this.isColliding) {
                     // Collision detected, check for attack inputs
                     if (keys['j']) {
                         this.punch();
@@ -410,44 +411,24 @@ class Stickman {
 
     
     punch() {
-        const currentTime = Date.now();
-        if (this.lastPunchTime && currentTime - this.lastPunchTime < 300) return;
-        
-        window.socket.emit("playerPunch", { 
-            attackerId: window.socket.id
-        });
-        
-        this.lastPunchTime = currentTime;
+        for (let id in players) {
+            if (id !== window.socket.id) {
+                players[id].health -= 10;
+                players[id].score += 10;
+                window.socket.emit("updateHealth", { id: id, health: players[id].health });
+            }
+        }
     }
     
     kick() {
-        const currentTime = Date.now();
-        if (this.lastKickTime && currentTime - this.lastKickTime < 300) return;
-        
-        window.socket.emit("playerKick", { 
-            attackerId: window.socket.id
-        });
-        
-        this.lastKickTime = currentTime;
-    }
-
-    // Update socket event listeners to handle damage and scoring
-    initializeSocketListeners() {
-        // Listen for health updates
-        window.socket.on("playerHealthUpdate", (data) => {
-            if (data.playerId === window.socket.id) {
-                this.health = data.health;
+        for (let id in players) {
+            if (id !== window.socket.id) {
+                players[id].health -= 10;
+                players[id].score += 10;
+                window.socket.emit("updateHealth", { id: id, health: players[id].health });
             }
-        });
-
-        // Listen for score updates
-        window.socket.on("playerScoreUpdate", (data) => {
-            if (data.playerId === window.socket.id) {
-                this.score = data.score;
-            }
-        });
+        }
     }
-
     addCombo(move) {
         const currentTime = Date.now();
         
@@ -557,9 +538,19 @@ function update() {
 
                 if (checkCollision(localPlayer, { x: mirroredX, y: enemy.y, width: 100, height: 100 })) {
                     if (localPlayer.x < mirroredX) {
+                        localPlayer.isColliding = true;
                         canMoveRight = false; // Block right movement
-                    } else {
+                    } else if(localPlayer.x > mirroredX) {
+                        localPlayer.isColliding = true;
                         canMoveLeft = false; // Block left movement
+                    }
+                    else if(localPlayer.x === mirroredX){
+                        localPlayer.isColliding = true;
+                        canMoveLeft = false;
+                        canMoveRight = false;
+                    }
+                    else {
+                        localPlayer.isColliding = false;
                     }
                 }
             }
@@ -569,8 +560,6 @@ function update() {
         if (keys['d'] && canMoveRight) localPlayer.move("right");
         if (keys[' ']) localPlayer.jump();
         if (keys['shift']) localPlayer.airDash();
-        if (keys['j']) localPlayer.punch();
-        if (keys['k']) localPlayer.kick();
 
         localPlayer.update();
 
@@ -645,8 +634,6 @@ function update() {
             // Create local player with initial position
             localPlayer = new Stickman(100, canvas.height - 150, "blue");
             localPlayer.username = username;
-
-            localPlayer.initializeSocketListeners();
             
             // Emit player move with game started flag and username
             window.socket.emit("playerMove", { 
