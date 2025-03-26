@@ -68,10 +68,12 @@ class Stickman {
         this.jumpPower = -10;
         
         // State tracking
-        this.onGround = false;
         this.facing = 1; // 1 for right, -1 for left
-        this.jumpsRemaining = 2;  // Double jump
-        this.isJumping = false;
+        // Enhanced jump tracking
+        this.maxJumps = 2;  // Maximum number of jumps
+        this.jumpsRemaining = this.maxJumps;
+        this.isGrounded = true;  // Clear grounded state
+        this.jumpCooldown = 0;  // Prevent rapid jump spam
         this.canAirDash = true;
         
         // Combat properties
@@ -97,11 +99,25 @@ class Stickman {
     }
 
     jump() {
+        // Debugging log
+        console.log(`Jump attempted: Jumps Remaining: ${this.jumpsRemaining}, Grounded: ${this.isGrounded}, Cooldown: ${this.jumpCooldown}`);
+
+        // Prevent multiple rapid jumps
+        if (this.jumpCooldown > 0) return;
+
+        // Check if we have jumps available
         if (this.jumpsRemaining > 0) {
+            // Apply jump velocity
             this.velY = this.jumpPower;
+            
+            // Decrement jumps
             this.jumpsRemaining--;
-            this.onGround = false;
-            this.isJumping = true;
+            
+            // Not grounded anymore
+            this.isGrounded = false;
+            
+            // Set cooldown to prevent spam
+            this.jumpCooldown = 10;
         }
     }
 
@@ -121,14 +137,19 @@ class Stickman {
         // Vertical movement
         this.velY += this.gravity;
         this.y += this.velY;
+        // Reduce jump cooldown
+        if (this.jumpCooldown > 0) {
+            this.jumpCooldown--;
+        }
 
         // Ground collision
         if (this.y + this.height >= canvas.height -50 ) {
             this.y = canvas.height - this.height -50 ;
             this.velY = 0;
-            this.onGround = true;
-            this.jumpsRemaining = 2;
-            this.isJumping = false;
+            // Reset to grounded state
+            this.isGrounded = true;
+            this.jumpsRemaining = this.maxJumps;
+            this.jumpCooldown = 0;
             this.canAirDash = true;
         }
 
@@ -298,6 +319,9 @@ window.addEventListener("keydown", (e) => {
     if (!isGameStarted) return; // Prevent input before game starts
 
     keys[e.key.toLowerCase()] = true;
+    if (localPlayer && e.key === ' ') {
+        localPlayer.jump();
+    }
     
     // Combo input
     if (localPlayer) {
