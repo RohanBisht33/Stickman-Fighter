@@ -11,6 +11,7 @@ let players = {};
 let localPlayer = null;
 let isGameStarted = false;
 
+//animation now
 function validateUsername() {
     const username = usernameInput.value.trim();
     
