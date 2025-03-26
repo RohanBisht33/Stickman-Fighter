@@ -11,22 +11,20 @@
         <div class="welcome-content">
             <h1>Stickman Fighter</h1>
             <p>Join the battle and show your fighting skills!</p>
-            <div class="controls-preview">
-                <div class="control-row">
-                    <div class="control-key">A/D</div>
-                    <div class="control-desc">Move Left/Right</div>
+            <div class="username-container">
+                <div class="username-input-wrapper">
+                    <input 
+                        type="text" 
+                        id="usernameInput" 
+                        class="username-input" 
+                        placeholder="Enter your fighter name" 
+                        maxlength="12" 
+                        required
+                    >
+                    <span class="input-icon">👤</span>
                 </div>
-                <div class="control-row">
-                    <div class="control-key">Space</div>
-                    <div class="control-desc">Jump</div>
-                </div>
-                <div class="control-row">
-                    <div class="control-key">J</div>
-                    <div class="control-desc">Punch</div>
-                </div>
-                <div class="control-row">
-                    <div class="control-key">K</div>
-                    <div class="control-desc">Kick</div>
+                <div class="username-validation">
+                    <span id="usernameError" class="error-message"></span>
                 </div>
             </div>
             <button id="startButton">Start Game</button>

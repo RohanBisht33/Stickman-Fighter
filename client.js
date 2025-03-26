@@ -1,6 +1,10 @@
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
-const startButton = document.getElementById("startButton");
+document.addEventListener('DOMContentLoaded', () => {
+    const usernameInput = document.getElementById('usernameInput');
+    const usernameError = document.getElementById('usernameError');
+    const startButton = document.getElementById("startButton");
+});
 const welcomeScreen = document.getElementById("welcomeScreen");
 const mobileControlsContainer = document.getElementById("mobile-controls");
 
@@ -8,6 +12,41 @@ let players = {};
 let localPlayer = null;
 let isGameStarted = false;
 let isMobile = window.innerWidth <= 768;
+
+function validateUsername() {
+    const username = usernameInput.value.trim();
+    
+    // Clear previous error
+    usernameError.textContent = '';
+    
+    // Validation rules
+    if (username.length === 0) {
+        usernameError.textContent = 'Please enter a username';
+        return false;
+    }
+    
+    if (username.length < 3) {
+        usernameError.textContent = 'Username must be at least 3 characters';
+        return false;
+    }
+    
+    if (username.length > 12) {
+        usernameError.textContent = 'Username must be 12 characters or less';
+        return false;
+    }
+    
+    // Optional: Check for valid characters
+    const validUsernameRegex = /^[a-zA-Z0-9_]+$/;
+    if (!validUsernameRegex.test(username)) {
+        usernameError.textContent = 'Username can only contain letters, numbers, and underscores';
+        return false;
+    }
+    
+    return true;
+}
+
+// Real-time validation
+usernameInput.addEventListener('input', validateUsername);
 
 
 window.addEventListener("beforeunload", () => {
@@ -34,7 +73,6 @@ function resizeCanvas() {
         mobileControlsContainer.style.display = 'none';
     }
 }
-
 function setupMobileControls() {
     const leftBtn = document.getElementById('mobile-left');
     const rightBtn = document.getElementById('mobile-right');
@@ -42,38 +80,61 @@ function setupMobileControls() {
     const punchBtn = document.getElementById('mobile-punch');
     const kickBtn = document.getElementById('mobile-kick');
 
-    // Touch event handlers
+    // Prevent default touch behaviors
+    [leftBtn, rightBtn, jumpBtn, punchBtn, kickBtn].forEach(btn => {
+        btn.addEventListener('touchstart', (e) => {
+            e.preventDefault(); // Prevent default touch actions
+        }, { passive: false });
+    });
+
+    // Touch event handlers with improved control
     function startMove(direction) {
         keys[direction] = true;
+        // Optional: Add visual feedback
+        document.getElementById(`mobile-${direction}`).classList.add('active');
     }
 
     function stopMove(direction) {
         keys[direction] = false;
+        // Remove visual feedback
+        document.getElementById(`mobile-${direction}`).classList.remove('active');
     }
 
-    leftBtn.addEventListener('touchstart', () => startMove('a'), { passive: true });
-    leftBtn.addEventListener('touchend', () => stopMove('a'), { passive: true });
+    // Directional controls
+    leftBtn.addEventListener('touchstart', () => startMove('a'), { passive: false });
+    leftBtn.addEventListener('touchend', () => stopMove('a'), { passive: false });
+    leftBtn.addEventListener('touchcancel', () => stopMove('a'), { passive: false });
     
-    rightBtn.addEventListener('touchstart', () => startMove('d'), { passive: true });
-    rightBtn.addEventListener('touchend', () => stopMove('d'), { passive: true });
+    rightBtn.addEventListener('touchstart', () => startMove('d'), { passive: false });
+    rightBtn.addEventListener('touchend', () => stopMove('d'), { passive: false });
+    rightBtn.addEventListener('touchcancel', () => stopMove('d'), { passive: false });
     
+    // Action buttons
     jumpBtn.addEventListener('touchstart', () => {
         if (localPlayer) localPlayer.jump();
-    }, { passive: true });
+    }, { passive: false });
     
     punchBtn.addEventListener('touchstart', () => {
-        if (localPlayer) localPlayer.addCombo('punch');
-    }, { passive: true });
+        if (localPlayer) localPlayer.punch();
+    }, { passive: false });
     
     kickBtn.addEventListener('touchstart', () => {
-        if (localPlayer) localPlayer.addCombo('kick');
-    }, { passive: true });
-
-    // Optional: Add device orientation for mobile tilt controls
-    if (window.DeviceOrientationEvent) {
-        window.addEventListener('deviceorientation', handleOrientation);
-    }
+        if (localPlayer) localPlayer.kick();
+    }, { passive: false });
 }
+
+// Add CSS for active state
+const activeButtonStyle = `
+.mobile-btn.active {
+    background-color: #45a049;
+    transform: scale(0.95);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+`;
+const styleSheet = document.createElement("style");
+styleSheet.type = "text/css";
+styleSheet.innerText = activeButtonStyle;
+document.head.appendChild(styleSheet);
 
 function handleOrientation(event) {
     if (!isMobile || !localPlayer) return;
@@ -143,14 +204,30 @@ class Stickman {
         this.isGrounded = true;  // Clear grounded state
         this.jumpCooldown = 0;  // Prevent rapid jump spam
         this.canAirDash = true;
+        this.spacePressed = false;
         
         // Combat properties
         this.health = 100;
         this.score = 0;
         
         // Animation and combo
+        this.lastPunchTime = 0;
+        this.lastKickTime = 0;
+
+
         this.currentCombo = [];
         this.lastComboTime = 0;
+    }
+
+    die() {
+        // Reset to welcome screen
+        welcomeScreen.style.display = 'block';
+        isGameStarted = false;
+        window.socket.disconnect();
+        
+        // Reset local player
+        localPlayer = null;
+        players = {};
     }
 
     move(direction) {
@@ -167,26 +244,25 @@ class Stickman {
     }
 
     jump() {
-        // Debugging log
-        console.log(`Jump attempted: Jumps Remaining: ${this.jumpsRemaining}, Grounded: ${this.isGrounded}, Cooldown: ${this.jumpCooldown}`);
-
-        // Prevent multiple rapid jumps
-        if (this.jumpCooldown > 0) return;
-
-        // Check if we have jumps available
-        if (this.jumpsRemaining > 0) {
-            // Apply jump velocity
+        // Reset cooldown if key is released
+        if (this.jumpCooldown > 0) {
+            this.jumpCooldown--;
+        }
+    
+        // Allow jump only when key is first pressed, not held
+        if (keys[' '] && this.jumpsRemaining > 0 && this.jumpCooldown === 0) {
             this.velY = this.jumpPower;
-            
-            // Decrement jumps
             this.jumpsRemaining--;
-            
-            // Not grounded anymore
             this.isGrounded = false;
             this.canAirDash = true;
-            
-            // Set cooldown to prevent spam
             this.jumpCooldown = 10;
+            keys[' '] = false; // Prevent continuous jumping
+        }
+        
+        // Reset jump when player lands
+        if (this.isGrounded) {
+            this.jumpsRemaining = this.maxJumps;
+            this.jumpCooldown = 0;
         }
     }
 
@@ -234,8 +310,39 @@ class Stickman {
             this.x = canvas.width - this.width - wallWidth;
             this.velX = 0;
         }
-
+        if (this.health <= 0) {
+            this.die();
+        }
         // Screen boundaries
+        for (let id in players) {
+            if (id !== window.socket.id) {
+                let enemy = players[id];
+                
+                // Check for horizontal collision
+                if (Math.abs(this.x - enemy.x) < this.width) {
+                    // Prevent horizontal overlap
+                    if (this.x < enemy.x) {
+                        this.x = enemy.x - this.width;
+                    } else {
+                        this.x = enemy.x + this.width;
+                    }
+                    this.velX = 0;
+                }
+                
+                // Vertical collision prevention
+                if (this.y + this.height > enemy.y && 
+                    this.y < enemy.y + enemy.height &&
+                    Math.abs(this.x - enemy.x) < this.width) {
+                    // Push players apart vertically
+                    if (this.y < enemy.y) {
+                        this.y = enemy.y - this.height;
+                    } else {
+                        this.y = enemy.y + enemy.height;
+                    }
+                    this.velY = 0;
+                }
+            }
+        }
     }
 
     // Method to draw wall boundaries (for visual debugging)
@@ -302,10 +409,21 @@ class Stickman {
     
         ctx.restore();
     }
-
+    
+    drawUsername() {
+        if (this.username) {
+            ctx.fillStyle = 'white';
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(this.username, this.x + this.width/2, this.y - 10);
+        }
+    }
+    
+    // Modify draw method to include username
     draw(isLocalPlayer = false) {
-        // Draw health and score for local player
         this.drawStickman();
+        this.drawUsername(); // Add username above stickman
+        
         if (isLocalPlayer) {
             this.updateHealthDisplay();
             this.updateScoreDisplay();
@@ -317,44 +435,56 @@ class Stickman {
 
     findOpponent() {
         let closest = null;
-        let minDistance = 50;  // Adjust attack range
+        let minDistance = 100;  // Increased attack range for more precise hit detection
+        let maxDistance = 200;  // Maximum distance for attack
     
         for (let id in players) {
             if (id !== window.socket.id) { // Don't hit yourself
                 let opponent = players[id];
                 let distance = Math.abs(this.x - opponent.x);
     
-                if (distance < minDistance) {
+                // Check if opponent is in the correct facing direction and within range
+                if (distance < maxDistance && 
+                    ((this.facing === 1 && opponent.x > this.x) || 
+                     (this.facing === -1 && opponent.x < this.x))) {
                     closest = opponent;
-                    minDistance = distance;
+                    break;
                 }
             }
         }
         return closest;
-    }    
-
-    punch() {
-        console.log("Punch!");
-        this.score += 5;
+    }
     
+    punch() {
+        // Prevent continuous damage by tracking last punch time
+        const currentTime = Date.now();
+        if (this.lastPunchTime && currentTime - this.lastPunchTime < 500) return;
+        
+        console.log("Punch!");
         let target = this.findOpponent();
         if (target) {
-            target.health -= 5;
+            target.health -= 10;
+            this.score += 5;
+            this.lastPunchTime = currentTime;
+            
             console.log(`Punch opponent! New health: ${target.health}`);
-    
             window.socket.emit("updateHealth", { id: target.id, health: target.health });
         }
     }
-
-    kick() {
-        console.log("Kick!");
-        this.score += 5;
     
+    kick() {
+        // Prevent continuous damage by tracking last kick time
+        const currentTime = Date.now();
+        if (this.lastKickTime && currentTime - this.lastKickTime < 500) return;
+        
+        console.log("Kick!");
         let target = this.findOpponent();
         if (target) {
-            target.health -= 5;
+            target.health -= 15;
+            this.score += 5;
+            this.lastKickTime = currentTime;
+            
             console.log(`Kick opponent! New health: ${target.health}`);
-    
             window.socket.emit("updateHealth", { id: target.id, health: target.health });
         }
     }
@@ -509,6 +639,17 @@ function update() {
 }
 
 startButton.addEventListener('click', () => {
+    const usernameInput = document.getElementById('usernameInput');
+    const username = usernameInput.value.trim();
+    
+    if (!username) {
+        alert('Please enter a username');
+        return;
+    }
+    if (!validateUsername()) {
+        e.preventDefault();
+        return;
+    }
     welcomeScreen.style.display = 'none';
     resizeCanvas();
     isGameStarted = true;
@@ -517,6 +658,7 @@ startButton.addEventListener('click', () => {
     window.socket.on("connect", () => {
         // Create local player with initial position
         localPlayer = new Stickman(100, canvas.height - 150, "blue");
+        localPlayer.username = username; // Add username to player
         
         // Emit player move with game started flag
         window.socket.emit("playerMove", { 
@@ -525,6 +667,7 @@ startButton.addEventListener('click', () => {
             health: localPlayer.health,
             score: localPlayer.score,
             facing: localPlayer.facing,
+            username: username,
             isGameStarted: true
         });
     });

@@ -56,6 +56,12 @@ io.on("connection", (socket) => {
         delete players[data.id]; // Remove player from the game
         io.emit("updatePlayers", players); // Send updated player list
     });
+    socket.on("updateHealth", (data) => {
+        if (players[data.id]) {
+            players[data.id].health = Math.max(0, data.health);
+            io.emit("updatePlayers", players);
+        }
+    });
     socket.on("disconnect", () => {
         console.log("Player disconnected:", socket.id);
         delete players[socket.id];
