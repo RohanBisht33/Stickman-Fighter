@@ -2,9 +2,13 @@ const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 const startButton = document.getElementById("startButton");
 const welcomeScreen = document.getElementById("welcomeScreen");
+const mobileControlsContainer = document.getElementById("mobile-controls");
+
 let players = {};
 let localPlayer = null;
 let isGameStarted = false;
+let isMobile = window.innerWidth <= 768;
+
 
 window.addEventListener("beforeunload", () => {
     window.socket.emit("playerInactive", { id: window.socket.id });
@@ -19,6 +23,70 @@ function resizeCanvas() {
     
     canvas.style.width = '100%';
     canvas.style.height = '100%';
+
+    // Toggle mobile controls
+    if (window.innerWidth <= 768) {
+        isMobile = true;
+        mobileControlsContainer.style.display = 'flex';
+        setupMobileControls();
+    } else {
+        isMobile = false;
+        mobileControlsContainer.style.display = 'none';
+    }
+}
+
+function setupMobileControls() {
+    const leftBtn = document.getElementById('mobile-left');
+    const rightBtn = document.getElementById('mobile-right');
+    const jumpBtn = document.getElementById('mobile-jump');
+    const punchBtn = document.getElementById('mobile-punch');
+    const kickBtn = document.getElementById('mobile-kick');
+
+    // Touch event handlers
+    function startMove(direction) {
+        keys[direction] = true;
+    }
+
+    function stopMove(direction) {
+        keys[direction] = false;
+    }
+
+    leftBtn.addEventListener('touchstart', () => startMove('a'), { passive: true });
+    leftBtn.addEventListener('touchend', () => stopMove('a'), { passive: true });
+    
+    rightBtn.addEventListener('touchstart', () => startMove('d'), { passive: true });
+    rightBtn.addEventListener('touchend', () => stopMove('d'), { passive: true });
+    
+    jumpBtn.addEventListener('touchstart', () => {
+        if (localPlayer) localPlayer.jump();
+    }, { passive: true });
+    
+    punchBtn.addEventListener('touchstart', () => {
+        if (localPlayer) localPlayer.addCombo('punch');
+    }, { passive: true });
+    
+    kickBtn.addEventListener('touchstart', () => {
+        if (localPlayer) localPlayer.addCombo('kick');
+    }, { passive: true });
+
+    // Optional: Add device orientation for mobile tilt controls
+    if (window.DeviceOrientationEvent) {
+        window.addEventListener('deviceorientation', handleOrientation);
+    }
+}
+
+function handleOrientation(event) {
+    if (!isMobile || !localPlayer) return;
+
+    const beta = event.beta; // Front to back tilt
+    const gamma = event.gamma; // Left to right tilt
+
+    // Simple tilt-based movement
+    if (gamma > 10) {
+        localPlayer.move("right");
+    } else if (gamma < -10) {
+        localPlayer.move("left");
+    }
 }
 
 // Call on load and window resize
@@ -152,11 +220,35 @@ class Stickman {
             this.jumpCooldown = 0;
             this.canAirDash = true;
         }
+        const wallWidth = 20; // Width of invisible walls
+        
+        // Left wall
+        if (this.x < wallWidth) {
+            this.x = wallWidth;
+            this.velX = 0;
+        }
+        
+        // Right wall
+        if (this.x > canvas.width - this.width - wallWidth) {
+            this.x = canvas.width - this.width - wallWidth;
+            this.velX = 0;
+        }
 
         // Screen boundaries
         this.x = Math.max(0, Math.min(this.x, canvas.width - this.width));
     }
 
+    // Method to draw wall boundaries (for visual debugging)
+    drawWalls() {
+        ctx.fillStyle = 'rgba(255, 0, 0, 0.1)'; // Semi-transparent red
+        
+        // Left wall
+        ctx.fillRect(0, 0, 20, canvas.height);
+        
+        // Right wall
+        ctx.fillRect(canvas.width - 20, 0, 20, canvas.height);
+    }
+    
     drawStickman() {
         const scaleX = this.width / 50;  // Default width was 50
         const scaleY = this.height / 80; // Default height was 80

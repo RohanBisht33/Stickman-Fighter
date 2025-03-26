@@ -221,3 +221,65 @@ body {
     background-color: #4CAF50;
     color: #121212;
 }
+/* Add these mobile-specific styles at the end of your existing styles.css */
+@media screen and (max-width: 768px) {
+    .game-container {
+        flex-direction: column;
+    }
+
+    .game-info {
+        position: relative;
+        flex-direction: column;
+        align-items: center;
+        padding: 10px;
+    }
+
+    .player-stats {
+        width: 100%;
+        justify-content: space-between;
+        margin-bottom: 10px;
+    }
+
+    .game-controls {
+        display: none; /* Hide desktop controls */
+    }
+
+    .mobile-controls {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        padding: 10px;
+        background: rgba(30, 30, 30, 0.7);
+    }
+
+    .mobile-movement {
+        display: flex;
+        gap: 10px;
+    }
+
+    .mobile-actions {
+        display: flex;
+        gap: 10px;
+    }
+
+    .mobile-btn {
+        background-color: #4CAF50;
+        color: white;
+        border: none;
+        padding: 10px 15px;
+        border-radius: 10px;
+        font-size: 1em;
+        cursor: pointer;
+        touch-action: manipulation; /* Prevent double-tap zoom */
+    }
+
+    .mobile-btn:active {
+        background-color: #45a049;
+    }
+
+    #gameCanvas {
+        order: -1; /* Ensure canvas is above controls */
+        height: calc(100vh - 150px); /* Adjust based on controls height */
+    }
+}

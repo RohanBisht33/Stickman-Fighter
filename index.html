@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Stickman Fighter</title>
     <link rel="stylesheet" href="styles.css">
 </head>
@@ -64,6 +64,18 @@
             </div>
         </div>
         <canvas id="gameCanvas"></canvas>
+        <!-- Mobile Controls -->
+        <div id="mobile-controls" class="mobile-controls">
+            <div class="mobile-movement">
+                <button id="mobile-left" class="mobile-btn">◀</button>
+                <button id="mobile-right" class="mobile-btn">▶</button>
+            </div>
+            <div class="mobile-actions">
+                <button id="mobile-jump" class="mobile-btn">Jump</button>
+                <button id="mobile-punch" class="mobile-btn">Punch</button>
+                <button id="mobile-kick" class="mobile-btn">Kick</button>
+            </div>
+        </div>
     </div>
     <script src="/socket.io/socket.io.js"></script>
     <script src="client.js"></script>
