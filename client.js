@@ -412,10 +412,10 @@ class Stickman {
     
     drawUsername() {
         if (this.username) {
-            ctx.fillStyle = 'white';
-            ctx.font = '12px Arial';
+            ctx.fillStyle = 'yellow'; // More visible color
+            ctx.font = '16px Arial'; // Larger font
             ctx.textAlign = 'center';
-            ctx.fillText(this.username, this.x + this.width/2, this.y - 10);
+            ctx.fillText(this.username, this.x + this.width/2, this.y - 20); // Moved up a bit
         }
     }
     
@@ -632,55 +632,57 @@ function update() {
                 otherPlayer.facing = -enemy.facing;
                 otherPlayer.velX = -enemy.velX;
 
-                otherPlayer.username = enemy.username;
+                otherPlayer.username = enemy.username || 'Unknown';
                 otherPlayer.draw();
             }
         }
 
     requestAnimationFrame(update);
 }
-
-startButton.addEventListener('click', () => {
-    const usernameInput = document.getElementById('usernameInput');
-    const username = usernameInput.value.trim();
-    
-    if (!username) {
-        alert('Please enter a username');
-        return;
-    }
-    if (!validateUsername()) {
-        e.preventDefault();
-        return;
-    }
-    welcomeScreen.style.display = 'none';
-    resizeCanvas();
-    isGameStarted = true;
-    window.socket = io("https://stickman-fighter.onrender.com"); // Connect to server
-
-    window.socket.on("connect", () => {
-        // Create local player with initial position
-        localPlayer = new Stickman(100, canvas.height - 150, "blue");
-        localPlayer.username = username; // Add username to player
+    startButton.addEventListener('click', () => {
+        const username = usernameInput.value.trim();
         
-        // Emit player move with game started flag
-        window.socket.emit("playerMove", { 
-            x: localPlayer.x, 
-            y: localPlayer.y,
-            health: localPlayer.health,
-            score: localPlayer.score,
-            facing: localPlayer.facing,
-            username: username,
-            isGameStarted: true
+        if (!username) {
+            alert('Please enter a username');
+            return;
+        }
+        
+        if (!validateUsername()) {
+            alert('Invalid username');
+            return;
+        }
+        
+        welcomeScreen.style.display = 'none';
+        resizeCanvas();
+        isGameStarted = true;
+        window.socket = io("https://stickman-fighter.onrender.com");
+    
+        window.socket.on("connect", () => {
+            console.log("Connected to server, username:", username);
+            
+            // Create local player with initial position
+            localPlayer = new Stickman(100, canvas.height - 150, "blue");
+            localPlayer.username = username;
+            
+            // Emit player move with game started flag and username
+            window.socket.emit("playerMove", { 
+                x: localPlayer.x, 
+                y: localPlayer.y,
+                health: localPlayer.health,
+                score: localPlayer.score,
+                facing: localPlayer.facing,
+                username: username, // Explicitly send username
+                isGameStarted: true
+            });
+        });
+        window.socket.on("updatePlayers", (serverPlayers) => {
+            players = serverPlayers;
+        });
+        window.socket.on("disconnect", (id) => {
+            delete players[id];
         });
     });
     
-    window.socket.on("updatePlayers", (serverPlayers) => {
-        players = serverPlayers;
-    });
-    window.socket.on("disconnect", (id) => {
-        delete players[id];
-    });
-});
 
 // Reduce console logging
 console.log = function() {};
