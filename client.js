@@ -491,7 +491,7 @@ document.addEventListener('DOMContentLoaded', () => {
         keys[key] = true;
 
         // Combo input with null check
-        if (localPlayer) {
+        if (localPlayer.isColliding) {
             switch(key) {
                 case 'j': 
                     localPlayer.punch();
