@@ -123,8 +123,8 @@ class Stickman {
         this.y += this.velY;
 
         // Ground collision
-        if (this.y >= canvas.height - this.height) {
-            this.y = canvas.height - this.height;
+        if (this.y + this.height >= canvas.height -50 ) {
+            this.y = canvas.height - this.height -50 ;
             this.velY = 0;
             this.onGround = true;
             this.jumpsRemaining = 2;
@@ -337,6 +337,17 @@ function update() {
     }
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // Fill ground
+    ctx.fillStyle = '#8B4513';  // Earthy brown color
+    ctx.fillRect(0, canvas.height - 34, canvas.width, 34);
+    
+    // Optional: add a slightly darker border
+    ctx.beginPath();
+    ctx.moveTo(0, canvas.height - 34);
+    ctx.lineTo(canvas.width, canvas.height - 34);
+    ctx.strokeStyle = '#5D3A1A';  // Darker brown for border
+    ctx.lineWidth = 2;
+    ctx.stroke();
     
     // Draw local player
     if (localPlayer && isGameStarted) {
