@@ -631,6 +631,8 @@ function update() {
                 let otherPlayer = new Stickman(mirroredX, enemy.y, "red");
                 otherPlayer.facing = -enemy.facing;
                 otherPlayer.velX = -enemy.velX;
+
+                otherPlayer.username = enemy.username;
                 otherPlayer.draw();
             }
         }

@@ -44,6 +44,7 @@ io.on("connection", (socket) => {
                 health: data.health,
                 score: data.score,
                 facing: data.facing,
+                username: data.username,
                 isGameStarted: data.isGameStarted || false
             };
         }
