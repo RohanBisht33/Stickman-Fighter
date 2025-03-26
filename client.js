@@ -183,6 +183,7 @@ class Stickman {
             
             // Not grounded anymore
             this.isGrounded = false;
+            this.canAirDash = true;
             
             // Set cooldown to prevent spam
             this.jumpCooldown = 10;
@@ -218,7 +219,7 @@ class Stickman {
             this.isGrounded = true;
             this.jumpsRemaining = this.maxJumps;
             this.jumpCooldown = 0;
-            this.canAirDash = true;
+            this.canAirDash = false;
         }
         const wallWidth = 20; // Width of invisible walls
         
@@ -235,7 +236,6 @@ class Stickman {
         }
 
         // Screen boundaries
-        this.x = Math.max(0, Math.min(this.x, canvas.width - this.width));
     }
 
     // Method to draw wall boundaries (for visual debugging)
@@ -248,7 +248,7 @@ class Stickman {
         // Right wall
         ctx.fillRect(canvas.width - 20, 0, 20, canvas.height);
     }
-    
+
     drawStickman() {
         const scaleX = this.width / 50;  // Default width was 50
         const scaleY = this.height / 80; // Default height was 80
@@ -377,6 +377,7 @@ class Stickman {
     checkCombos() {
         const comboString = this.currentCombo.join(',');
         let target = this.findOpponent();
+        if (target === null) return;
         switch(comboString) {
             case 'punch,punch':
                 console.log("Double Punch Combo!");
@@ -411,10 +412,6 @@ window.addEventListener("keydown", (e) => {
     if (!isGameStarted) return; // Prevent input before game starts
 
     keys[e.key.toLowerCase()] = true;
-    if (localPlayer && e.key === ' ') {
-        localPlayer.jump();
-    }
-    
     // Combo input
     if (localPlayer) {
         switch(e.key.toLowerCase()) {
