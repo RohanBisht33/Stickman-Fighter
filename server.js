@@ -39,8 +39,8 @@ io.on("connection", (socket) => {
         if (players[socket.id]) {
             // Update all player properties
             players[socket.id] = {
-                x: data.x,
-                y: data.y,
+                x: -data.x,
+                y: -data.y,
                 health: data.health,
                 score: data.score,
                 facing: data.facing,

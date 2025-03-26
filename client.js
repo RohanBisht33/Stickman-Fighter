@@ -493,8 +493,8 @@ startButton.addEventListener('click', () => {
         
         // Emit player move with game started flag
         window.socket.emit("playerMove", { 
-            x: -localPlayer.x, 
-            y: -localPlayer.y,
+            x: localPlayer.x, 
+            y: localPlayer.y,
             health: localPlayer.health,
             score: localPlayer.score,
             facing: localPlayer.facing,
