@@ -40,7 +40,7 @@ io.on("connection", (socket) => {
             // Update all player properties
             players[socket.id] = {
                 x: -data.x,
-                y: -data.y,
+                y: data.y,
                 health: data.health,
                 score: data.score,
                 facing: data.facing,
