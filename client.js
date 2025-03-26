@@ -447,8 +447,6 @@ class Stickman {
 
     checkCombos() {
         const comboString = this.currentCombo.join(',');
-        let target = this.findOpponent();
-        if (target === null) return;
         switch(comboString) {
             case 'punch,punch':
                 console.log("Double Punch Combo!");
@@ -600,7 +598,7 @@ function update() {
                 let enemy = players[id];
                 let mirroredX = (canvas.width - enemy.x) - localPlayer.width;
 
-                let otherPlayer = new Stickman(mirroredX, enemy.y, "red");
+                let otherPlayer = new Stickman(mirroredX, localPlayer.y, "red");
                 otherPlayer.facing = -enemy.facing;
                 otherPlayer.velX = -enemy.velX;
 
