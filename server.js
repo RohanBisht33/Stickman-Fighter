@@ -52,6 +52,41 @@ io.on("connection", (socket) => {
         // Broadcast updated players to all clients
         io.emit("updatePlayers", players);
     });
+    socket.on("playerPunch", (data) => {
+        // Find opponents in collision range
+        const attackerId = data.attackerId;
+        for (let targetId in players) {
+            if (targetId !== attackerId) {
+                // Apply damage and score
+                players[targetId].health = Math.max(0, 
+                    (players[targetId].health || 100) - 10
+                );
+                players[attackerId].score = 
+                    (players[attackerId].score || 0) + 5;
+            }
+        }
+        
+        // Broadcast updated players
+        io.emit("updatePlayers", players);
+    });
+
+    socket.on("playerKick", (data) => {
+        // Find opponents in collision range
+        const attackerId = data.attackerId;
+        for (let targetId in players) {
+            if (targetId !== attackerId) {
+                // Apply damage and score
+                players[targetId].health = Math.max(0, 
+                    (players[targetId].health || 100) - 15
+                );
+                players[attackerId].score = 
+                    (players[attackerId].score || 0) + 10;
+            }
+        }
+        
+        // Broadcast updated players
+        io.emit("updatePlayers", players);
+    });
     socket.on("damagePlayer", (data) => {
         if (players[data.targetId] && players[data.attackerId]) {
             // Reduce health

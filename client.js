@@ -304,7 +304,13 @@ class Stickman {
                 
                 // Only log collision, no movement restriction
                 if (checkCollision(this, enemyStickman)) {
-                    console.log("Collision detected", this.x, mirroredX);
+                    // Collision detected, check for attack inputs
+                    if (keys['j']) {
+                        this.punch();
+                    }
+                    if (keys['k']) {
+                        this.kick();
+                    }
                 }
             }
     }
@@ -402,60 +408,27 @@ class Stickman {
     updateHealthDisplay = updateHealthDisplay;
     updateScoreDisplay = updateScoreDisplay;
 
-    findOpponent() {
-        let closest = null;
-        let minDistance = Infinity;
-        
-        for (let id in players) {
-            if (id !== window.socket.id) {
-                let opponent = players[id];
-                let distance = Math.abs(this.x - opponent.x);
-                
-                // More nuanced direction checking
-                let isInFacingDirection = 
-                    (this.facing === 1 && opponent.x > this.x) || 
-                    (this.facing === -1 && opponent.x < this.x);
-                
-                if (isInFacingDirection && distance < minDistance) {
-                    closest = opponent;
-                    minDistance = distance;
-                }
-            }
-        }
-        
-        return closest;
-    }
     
     punch() {
         const currentTime = Date.now();
         if (this.lastPunchTime && currentTime - this.lastPunchTime < 300) return;
         
-        let target = this.findOpponent();
-        if (target) {
-            window.socket.emit("damagePlayer", { 
-                targetId: target.id, 
-                attackerId: window.socket.id,
-                damage: 10  // Punch does 10 damage
-            });
-            
-            this.lastPunchTime = currentTime;
-        }
+        window.socket.emit("playerPunch", { 
+            attackerId: window.socket.id
+        });
+        
+        this.lastPunchTime = currentTime;
     }
     
     kick() {
         const currentTime = Date.now();
         if (this.lastKickTime && currentTime - this.lastKickTime < 300) return;
         
-        let target = this.findOpponent();
-        if (target) {
-            window.socket.emit("damagePlayer", { 
-                targetId: target.id, 
-                attackerId: window.socket.id,
-                damage: 15  // Kick does 15 damage
-            });
-            
-            this.lastKickTime = currentTime;
-        }
+        window.socket.emit("playerKick", { 
+            attackerId: window.socket.id
+        });
+        
+        this.lastKickTime = currentTime;
     }
 
     // Update socket event listeners to handle damage and scoring
