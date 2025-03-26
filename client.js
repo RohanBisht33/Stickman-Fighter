@@ -361,7 +361,7 @@ startButton.addEventListener('click', () => {
     welcomeScreen.style.display = 'none';
     resizeCanvas();
     isGameStarted = true;
-    window.socket = io("https://stickman-fighter.onrender.com/"); // Connect to server
+    window.socket = io("https://stickman-fighter.onrender.com"); // Connect to server
 
     window.socket.on("connect", () => {
         // Create local player with initial position
