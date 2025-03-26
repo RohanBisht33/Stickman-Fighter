@@ -277,6 +277,78 @@ body {
     font-size: 14px;
     text-align: center;
 }
+@media screen and (max-width: 768px) {
+    /* Force horizontal orientation */
+    body {
+        overflow: hidden;
+    }
+
+    /* Prevent vertical view */
+    @media (orientation: portrait) {
+        body::before {
+            content: 'Please rotate your device';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2em;
+            z-index: 9999;
+        }
+
+        .game-container, #gameCanvas, .welcome-screen {
+            display: none;
+        }
+    }
+}
+
+/* Mobile Controls */
+.mobile-controls {
+    position: fixed;
+    bottom: 10px;
+    left: 0;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 10px;
+    z-index: 100;
+}
+
+.mobile-movement {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.mobile-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.mobile-btn {
+    background-color: rgba(76, 175, 80, 0.7);
+    color: white;
+    border: 2px solid #4CAF50;
+    padding: 8px 15px;
+    border-radius: 10px;
+    font-size: 12px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+    touch-action: manipulation;
+}
+
+.mobile-btn:active {
+    background-color: #45a049;
+    transform: scale(0.95);
+}
 /* Add these mobile-specific styles at the end of your existing styles.css */
 @media screen and (max-width: 768px) and (orientation: landscape) {
     body {

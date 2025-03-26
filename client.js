@@ -317,32 +317,16 @@ class Stickman {
         for (let id in players) {
             if (id !== window.socket.id) {
                 let enemy = players[id];
+                let mirroredX = (canvas.width - enemy.x) - this.width;
+    
+                let enemyStickman = new Stickman(mirroredX, enemy.y, "red");
                 
-                // Check for horizontal collision
-                if (Math.abs(this.x - enemy.x) < this.width) {
-                    // Prevent horizontal overlap
-                    if (this.x < enemy.x) {
-                        this.x = enemy.x - this.width;
-                    } else {
-                        this.x = enemy.x + this.width;
-                    }
-                    this.velX = 0;
-                }
-                
-                // Vertical collision prevention
-                if (this.y + this.height > enemy.y && 
-                    this.y < enemy.y + enemy.height &&
-                    Math.abs(this.x - enemy.x) < this.width) {
-                    // Push players apart vertically
-                    if (this.y < enemy.y) {
-                        this.y = enemy.y - this.height;
-                    } else {
-                        this.y = enemy.y + enemy.height;
-                    }
-                    this.velY = 0;
+                // Only log collision, no movement restriction
+                if (checkCollision(this, enemyStickman)) {
+                    console.log("Collision detected", this.x, mirroredX);
                 }
             }
-        }
+    }
     }
 
     // Method to draw wall boundaries (for visual debugging)
@@ -456,36 +440,34 @@ class Stickman {
     }
     
     punch() {
-        // Prevent continuous damage by tracking last punch time
         const currentTime = Date.now();
         if (this.lastPunchTime && currentTime - this.lastPunchTime < 500) return;
         
-        console.log("Punch!");
         let target = this.findOpponent();
         if (target) {
-            target.health -= 10;
-            this.score += 5;
-            this.lastPunchTime = currentTime;
+            window.socket.emit("damagePlayer", { 
+                targetId: target.id, 
+                damage: 10,
+                attackerId: window.socket.id
+            });
             
-            console.log(`Punch opponent! New health: ${target.health}`);
-            window.socket.emit("updateHealth", { id: target.id, health: target.health });
+            this.lastPunchTime = currentTime;
         }
     }
     
     kick() {
-        // Prevent continuous damage by tracking last kick time
         const currentTime = Date.now();
         if (this.lastKickTime && currentTime - this.lastKickTime < 500) return;
         
-        console.log("Kick!");
         let target = this.findOpponent();
         if (target) {
-            target.health -= 15;
-            this.score += 5;
-            this.lastKickTime = currentTime;
+            window.socket.emit("damagePlayer", { 
+                targetId: target.id, 
+                damage: 15,
+                attackerId: window.socket.id
+            });
             
-            console.log(`Kick opponent! New health: ${target.health}`);
-            window.socket.emit("updateHealth", { id: target.id, health: target.health });
+            this.lastKickTime = currentTime;
         }
     }
 
@@ -552,12 +534,13 @@ window.addEventListener("keydown", (e) => {
 });
 window.addEventListener("keyup", (e) => { keys[e.key.toLowerCase()] = false; });
 
-function checkCollision(player, enemy) {
+function checkCollision(player1, player2) {
+    const hitboxReduction = 0.6; // Reduce hitbox size for more precise collision
     return (
-        player.x < enemy.x + enemy.width &&
-        player.x + player.width > enemy.x &&
-        player.y < enemy.y + enemy.height &&
-        player.y + player.height > enemy.y
+        player1.x < player2.x + player2.width * hitboxReduction &&
+        player1.x + player1.width * hitboxReduction > player2.x &&
+        player1.y < player2.y + player2.height * hitboxReduction &&
+        player1.y + player1.height * hitboxReduction > player2.y
     );
 }
 

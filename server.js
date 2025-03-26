@@ -52,7 +52,21 @@ io.on("connection", (socket) => {
         // Broadcast updated players to all clients
         io.emit("updatePlayers", players);
     });
-    
+    socket.on("damagePlayer", (data) => {
+        if (players[data.targetId] && players[data.attackerId]) {
+            // Reduce health
+            players[data.targetId].health = Math.max(0, 
+                (players[data.targetId].health || 100) - data.damage
+            );
+            
+            // Increase attacker's score
+            players[data.attackerId].score = 
+                (players[data.attackerId].score || 0) + 5;
+            
+            // Broadcast updated players
+            io.emit("updatePlayers", players);
+        }
+    });
     socket.on("playerInactive", (data) => {
         delete players[data.id]; // Remove player from the game
         io.emit("updatePlayers", players); // Send updated player list
