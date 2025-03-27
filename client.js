@@ -619,7 +619,7 @@ function update() {
             
             // Calculate consistent spawn position
             // Calculate consistent spawn position
-            let spawnX = canvas.width - enemyData.x - 30; // Subtract width to position correctly
+            let spawnX = canvas.width * 0.9; // Subtract width to position correctly
             let spawnY = canvas.height * 0.75; // 50 is the ground offset
 
             // Create enemy stickman with mirrored positioning
