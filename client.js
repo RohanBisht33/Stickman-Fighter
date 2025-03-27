@@ -35,7 +35,7 @@ function validateUsername() {
     }
     
     // Optional: Check for valid characters
-    const validUsernameRegex = /^[a-zA-Z0-9_]+$/;
+    const validUsernameRegex = /^[a-zA-Z0-9_ ]+$/;
     if (!validUsernameRegex.test(username)) {
         usernameError.textContent = 'Username can only contain letters, numbers, and underscores';
         return false;
@@ -93,10 +93,19 @@ function updateScoreDisplay() {
 }
 
 class Stickman {
-    constructor(x, y, color) {
+    constructor(x, y, color, serverId) {
         // Position and movement
+        this.serverId = serverId; // Unique server-side ID
+        this.baseX = x;  // Original spawn X
+        this.baseY = y;  // Original spawn Y
+
         this.x = x;
         this.y = y;
+
+        // Add more robust positioning tracking
+        this.spawnPercentageX = x / canvas.width;
+        this.spawnPercentageY = y / canvas.height;
+
         this.velX = 0;
         this.velY = 0;
 
@@ -208,6 +217,13 @@ class Stickman {
         }
     }
 
+    resetToSpawnPosition() {
+        this.x = this.baseX;
+        this.y = this.baseY;
+        this.velX = 0;
+        this.velY = 0;
+    }
+
     update() {
 
         if (keys['q']) {
@@ -247,6 +263,9 @@ class Stickman {
         // Wall collision with immediate bounce
         const wallWidth = 20; // Width of invisible walls
         const bounceStrength = 10; // Stronger bounce to be noticeable
+
+        const screenWidth = canvas.width;
+        const screenHeight = canvas.height;
     
 
         // Left wall bounce
@@ -594,19 +613,33 @@ function update() {
 
     // Draw other players
     
-        for (let id in players) {
-            if (id !== window.socket.id && players[id].isGameStarted) {
-                let enemy = players[id];
-                let mirroredX = (canvas.width - enemy.x) - localPlayer.width;
-                let otherPlayer = new Stickman(mirroredX, enemy.y, "red");
+    for (let id in players) {
+        if (id !== window.socket.id && players[id].isGameStarted) {
+            let enemyData = players[id];
+            
+            // Calculate consistent spawn position
+            // Calculate consistent spawn position
+            let spawnX = canvas.width - enemyData.x - 30; // Subtract width to position correctly
+            let spawnY = canvas.height - enemyData.y + 300; // Position at bottom, subtract height offset
 
-                otherPlayer.facing = -enemy.facing;
-                otherPlayer.velX = -enemy.velX;
+            // Create enemy stickman with mirrored positioning
+            let otherPlayer = new Stickman(
+                spawnX, 
+                spawnY, 
+                "red", 
+                id
+            );
 
-                otherPlayer.username = enemy.username;
-                otherPlayer.draw();
-            }
+            // Apply server-side position data carefully
+            //otherPlayer.x = spawnX + (enemyData.x - enemyData.baseX);
+            //otherPlayer.y = spawnY + (enemyData.y - enemyData.baseY);
+            
+            otherPlayer.facing = -enemyData.facing;
+            otherPlayer.username = enemyData.username;
+            
+            otherPlayer.draw();
         }
+    }
 
     requestAnimationFrame(update);
 }
@@ -633,13 +666,26 @@ startButton.addEventListener('click', () => {
         console.log("Connected to server, username:", username);
         
         // Create local player with initial position
-        localPlayer = new Stickman(100, canvas.height - 150, "blue");
+        const spawnPercentageX = 0.1;  // 10% from left
+        const spawnPercentageY = 0.9;  // 90% from bottom
+
+        // Create local player with normalized positioning
+        localPlayer = new Stickman(
+            canvas.width * spawnPercentageX -130, 
+            canvas.height * spawnPercentageY, 
+            "blue",
+            window.socket.id
+        );
         localPlayer.username = username;
         
         // Emit player move with game started flag and username
         window.socket.emit("playerMove", { 
             x: localPlayer.x, 
             y: localPlayer.y,
+            baseX: localPlayer.baseX,
+            baseY: localPlayer.baseY,
+            spawnPercentageX: localPlayer.spawnPercentageX,
+            spawnPercentageY: localPlayer.spawnPercentageY,
             health: localPlayer.health,
             score: localPlayer.score,
             facing: localPlayer.facing,

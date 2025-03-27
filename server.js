@@ -41,6 +41,10 @@ io.on("connection", (socket) => {
             players[socket.id] = {
                 x: data.x,
                 y: data.y,
+                baseX: data.baseX,
+                baseY: data.baseY,
+                spawnPercentageX: data.spawnPercentageX,
+                spawnPercentageY: data.spawnPercentageY,
                 health: data.health,
                 score: data.score,
                 facing: data.facing,
