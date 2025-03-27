@@ -59,6 +59,7 @@ function resizeCanvas() {
     canvas.width = gameContainer.clientWidth;
     canvas.height = gameContainer.clientHeight - gameInfo.offsetHeight;
     
+    // Send new canvas size to the server
     canvas.style.width = '100%';
     canvas.style.height = '100%';
 
@@ -192,7 +193,7 @@ class Stickman {
 
     airDash() {
         if (this.canAirDash && !this.onGround) {
-            const dashSpeed = 20;
+            const dashSpeed = 40;
             this.velX = this.velX > 0 ? dashSpeed : -dashSpeed;
             this.canAirDash = false;
         }
@@ -597,8 +598,7 @@ function update() {
             if (id !== window.socket.id && players[id].isGameStarted) {
                 let enemy = players[id];
                 let mirroredX = (canvas.width - enemy.x) - localPlayer.width;
-                let normalizedY = (enemy.y / 479) * canvas.height; // Assuming 800 is the default height
-                let otherPlayer = new Stickman(mirroredX, normalizedY, "red");
+                let otherPlayer = new Stickman(mirroredX, enemy.y, "red");
 
                 otherPlayer.facing = -enemy.facing;
                 otherPlayer.velX = -enemy.velX;
@@ -610,51 +610,50 @@ function update() {
 
     requestAnimationFrame(update);
 }
-    startButton.addEventListener('click', () => {
-        const username = usernameInput.value.trim();
-        
-        if (!username) {
-            alert('Please enter a username');
-            return;
-        }
-        
-        if (!validateUsername()) {
-            alert('Invalid username');
-            return;
-        }
-        
-        welcomeScreen.style.display = 'none';
-        resizeCanvas();
-        isGameStarted = true;
-        window.socket = io("https://stickman-fighter.onrender.com");
     
-        window.socket.on("connect", () => {
-            console.log("Connected to server, username:", username);
-            
-            // Create local player with initial position
-            localPlayer = new Stickman(100, canvas.height - 150, "blue");
-            localPlayer.username = username;
-            
-            // Emit player move with game started flag and username
-            window.socket.emit("playerMove", { 
-                x: localPlayer.x, 
-                y: localPlayer.y,
-                health: localPlayer.health,
-                score: localPlayer.score,
-                facing: localPlayer.facing,
-                username: localPlayer.username, // Explicitly send username
-                isGameStarted: true
-            });
-        });
-        window.socket.on("updatePlayers", (serverPlayers) => {
-            players = serverPlayers;
-        });
-        window.socket.on("disconnect", (id) => {
-            delete players[id];
+startButton.addEventListener('click', () => {
+    const username = usernameInput.value.trim();
+    
+    if (!username) {
+        alert('Please enter a username');
+        return;
+    }
+    
+    if (!validateUsername()) {
+        alert('Invalid username');
+        return;
+    }
+    
+    welcomeScreen.style.display = 'none';
+    resizeCanvas();
+    isGameStarted = true;
+    window.socket = io("https://stickman-fighter.onrender.com");
+
+    window.socket.on("connect", () => {
+        console.log("Connected to server, username:", username);
+        
+        // Create local player with initial position
+        localPlayer = new Stickman(100, canvas.height - 150, "blue");
+        localPlayer.username = username;
+        
+        // Emit player move with game started flag and username
+        window.socket.emit("playerMove", { 
+            x: localPlayer.x, 
+            y: localPlayer.y,
+            health: localPlayer.health,
+            score: localPlayer.score,
+            facing: localPlayer.facing,
+            username: localPlayer.username, // Explicitly send username
+            isGameStarted: true
         });
     });
-    
-
+    window.socket.on("updatePlayers", (serverPlayers) => {
+        players = serverPlayers;
+    });
+    window.socket.on("disconnect", (id) => {
+        delete players[id];
+    });
+});
 // Reduce console logging
 console.log = function() {};
 

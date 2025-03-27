@@ -32,7 +32,7 @@ io.on("connection", (socket) => {
     players[socket.id] = getRandomPosition();
     // Broadcast updated player list to all clients
     io.emit("updatePlayers", players);
-
+ 
     socket.on("playerMove", (data) => {
         console.log("Received player move:", data); // Debug log
         
