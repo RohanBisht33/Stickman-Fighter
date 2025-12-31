@@ -239,8 +239,9 @@ class Stickman {
         this.attackFrame = 0;
 
         let duration = 300;
-        if (type.startsWith('combo')) duration = 600; // longer combo anim
-        else if (type === 'kick') duration = 400;
+        if (type.startsWith('combo')) duration = 1200; // SLOWER COMBOS
+        else if (type === 'kick') duration = 500;
+        else if (type === 'punch') duration = 400;
 
         setTimeout(() => { this.isAttacking = false; }, duration);
     }
@@ -250,7 +251,7 @@ class Stickman {
         if (enemy) {
             // Hitbox Logic based on Facing Direction
             const dx = enemy.x - this.x;
-            const inFront = (this.facing === 1 && dx > -50) || (this.facing === -1 && dx < 50); // More generous
+            const inFront = (this.facing === 1 && dx > -50) || (this.facing === -1 && dx < 50);
 
             const dist = Math.hypot((enemy.x + 50) - (this.x + 50), (enemy.y + 50) - (this.y + 50));
 
@@ -302,6 +303,7 @@ class Stickman {
 
         // Procedural Animation
         let legL = 0, legR = 0, arm = 0;
+        let bodyRot = 0;
 
         if (this.isDashing) {
             legL = 1.0; legR = 0.5; arm = 1.5; // Naruto run style
@@ -315,32 +317,33 @@ class Stickman {
             legL = 0.5; legR = -0.2; arm = -1.5; // Jump pose
         }
 
-        // Attack Anims
+        // Attack Anims - SLOWER
         let punchOffset = 0;
         if (this.isAttacking) {
-            this.attackFrame += 0.2;
+            this.attackFrame += 0.05; // SIGNIFICANTLY SLOWER
 
             if (this.attackType === 'punch') {
-                punchOffset = 25 * Math.sin(this.attackFrame * Math.PI);
+                punchOffset = 25 * Math.sin(this.attackFrame * Math.PI * 2);
                 arm = -1.5;
             } else if (this.attackType === 'kick') {
-                legR = -1.5 * Math.sin(this.attackFrame * Math.PI);
+                legR = -1.5 * Math.sin(this.attackFrame * Math.PI * 2);
             } else if (this.attackType === 'combo_triple_punch') {
                 // Fast flurry
-                punchOffset = 30 * Math.sin(this.attackFrame * Math.PI * 3);
+                punchOffset = 30 * Math.sin(this.attackFrame * Math.PI * 8); // Was *3
                 arm = -1.5;
             } else if (this.attackType === 'combo_spin_kick') {
                 // Spin body
-                ctx.rotate(this.attackFrame * Math.PI * 2);
+                bodyRot = this.attackFrame * Math.PI * 4; // Was *2
                 legR = -2.0;
             } else if (this.attackType === 'combo_uppercut') {
                 // Upward punch
-                arm = -2.5;
-                // Maybe lift char visual slightly
+                arm = -2.5 * Math.sin(this.attackFrame * Math.PI);
             }
         }
 
         // --- DRAWING STICKMAN ---
+        ctx.rotate(bodyRot);
+
         ctx.strokeStyle = this.color;
         ctx.lineWidth = 4;
         ctx.lineCap = "round";
@@ -437,6 +440,7 @@ const Network = {
         conn.on('data', (data) => handleData(data));
         conn.on('close', () => {
             showToast("Opponent Left");
+            location.reload(); // Simple handle for now
         });
     },
 
@@ -521,6 +525,7 @@ function checkWinCondition() {
         const winner = localPlayer.health > 0 ? "YOU WIN" : "YOU LOSE";
         document.getElementById('winnerText').textContent = winner;
 
+        // Show after delay
         setTimeout(() => {
             rematchModal.style.display = 'flex';
         }, 1000);
