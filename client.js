@@ -189,8 +189,15 @@ class Stickman {
         // --- INPUT HANDLING (Only for Local Player) ---
         if (this === localPlayer) {
             const isHoldingDash = keys['q'] || mobileKeys['dash'];
-            if (isHoldingDash && this.canDash && this.dashCooldown === 0 && !this.isDashing) {
-                this.startDash();
+
+            // Dash Logic: Once per hold interaction
+            if (isHoldingDash) {
+                if (!this.dashInputLock && this.canDash && this.dashCooldown === 0 && !this.isDashing) {
+                    this.startDash();
+                    this.dashInputLock = true;
+                }
+            } else {
+                this.dashInputLock = false;
             }
         }
 
@@ -204,8 +211,9 @@ class Stickman {
                 this.dashCooldown = 20;
                 this.velX *= 0.3;
             } else {
-                let dashSpeed = 45; // Buffed
-                if (!this.isGrounded) dashSpeed = 60; // Buffed
+                // Keep applying velocity to override friction/gravity during dash
+                let dashSpeed = 45;
+                if (!this.isGrounded) dashSpeed = 60;
                 this.velX = this.facing * dashSpeed;
                 this.velY = 0;
             }
@@ -259,8 +267,14 @@ class Stickman {
     startDash() {
         if (this.canDash) {
             this.isDashing = true;
-            this.dashTimer = 15; // Increased Duration
+            this.dashTimer = 15;
             this.canDash = false;
+
+            // INSTANT VELOCITY
+            let dashSpeed = 45;
+            if (!this.isGrounded) dashSpeed = 60;
+            this.velX = this.facing * dashSpeed;
+
             if (!this.isGrounded) this.canDash = false;
         }
     }
@@ -661,18 +675,22 @@ function update() {
     requestAnimationFrame(update);
 
     if (isPaused) return;
-    if (canvas.width !== GAME_WIDTH) resizeCanvas(); // Safety check
+    if (canvas.width !== GAME_WIDTH) resizeCanvas();
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Environment
-    ctx.fillStyle = '#1e1e24'; ctx.fillRect(0, GAME_HEIGHT - 34, GAME_WIDTH, 34);
-    ctx.strokeStyle = '#4CAF50'; ctx.beginPath(); ctx.moveTo(0, GAME_HEIGHT - 34); ctx.lineTo(GAME_WIDTH, GAME_HEIGHT - 34); ctx.stroke();
+    // Environment - Extended Width
+    ctx.fillStyle = '#1e1e24'; ctx.fillRect(-500, GAME_HEIGHT - 34, GAME_WIDTH + 1000, 100);
+    ctx.strokeStyle = '#4CAF50'; ctx.beginPath(); ctx.moveTo(-500, GAME_HEIGHT - 34); ctx.lineTo(GAME_WIDTH + 1000, GAME_HEIGHT - 34); ctx.stroke();
 
     if (localPlayer) {
         if (keys['a'] || mobileKeys['left']) localPlayer.move('left');
         else if (keys['d'] || mobileKeys['right']) localPlayer.move('right');
         if (keys[' '] || mobileKeys['jump']) localPlayer.jump();
+
+        // Dash Hold Logic Fix (External to class update for input management)
+        // But better to let class handle it if we modify update() structure.
+        // Actually, let's keep it simple here. Class update handles it now with the previous edit attempt I will retry.
 
         localPlayer.update();
         localPlayer.draw(true);
