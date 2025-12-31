@@ -25,6 +25,8 @@
             <div class="mode-selection" id="modeSelection">
                 <button id="createRoomBtn" class="menu-btn">Create Room (Host)</button>
                 <button id="joinRoomBtn" class="menu-btn">Join Room</button>
+                <button id="settingsBtn" class="small-btn secondary" style="margin-top:20px;">Settings / How to
+                    Play</button>
             </div>
 
             <div class="room-controls" id="roomControls" style="display: none;">
@@ -65,23 +67,63 @@
         </div>
     </div>
 
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content settings-content">
+            <h2>SETTINGS & GUIDE</h2>
+
+            <div class="settings-tabs">
+                <button class="tab-btn active" data-tab="controls">Controls</button>
+                <button class="tab-btn" data-tab="combos">Combos</button>
+            </div>
+
+            <div id="tab-controls" class="tab-pane active">
+                <div class="controls-guide">
+                    <p><span>A / D</span> Move Left / Right</p>
+                    <p><span>Space</span> Jump (Double Jump)</p>
+                    <p><span>Q</span> Dash (Ground Only)</p>
+                    <p><span>Shift</span> Air Dash (Mid-air)</p>
+                    <p><span>I</span> Punch</p>
+                    <p><span>O</span> Kick</p>
+                    <p><span>P</span> Fireball (Costs Energy)</p>
+                </div>
+            </div>
+
+            <div id="tab-combos" class="tab-pane">
+                <div class="combo-list">
+                    <div class="combo-item">
+                        <span class="combo-name">Triple Punch</span>
+                        <span class="combo-keys">I + I + I</span>
+                        <span class="combo-desc">Fast 3-hit combo</span>
+                    </div>
+                    <div class="combo-item">
+                        <span class="combo-name">Spin Kick</span>
+                        <span class="combo-keys">O + O + O</span>
+                        <span class="combo-desc">Heavy knockback kick</span>
+                    </div>
+                    <div class="combo-item">
+                        <span class="combo-name">UpperCut</span>
+                        <span class="combo-keys">I + O</span>
+                        <span class="combo-desc">Launches enemy into air</span>
+                    </div>
+                </div>
+            </div>
+
+            <button id="closeSettingsBtn" class="menu-btn" style="margin-top: 20px;">Close</button>
+        </div>
+    </div>
+
     <!-- UI Overlays -->
     <div id="toast" class="toast">Player Joind!</div>
 
     <div id="pauseMenu" class="modal-overlay" style="display: none;">
         <div class="modal-content">
             <h2>PAUSED</h2>
-            <div class="controls-guide">
-                <p><span>A / D</span> Move</p>
-                <p><span>Space</span> Jump (x2)</p>
-                <p><span>Hold Q</span> Dash</p>
-                <p><span>Shift (Air)</span> Air Dash</p>
-                <p><span>I</span> Punch</p>
-                <p><span>O</span> Kick</p>
-                <p><span>P</span> Shoot</p>
+            <div class="button-column">
+                <button id="resumeBtn" class="menu-btn">Resume</button>
+                <button id="pauseSettingsBtn" class="menu-btn">Settings / Combos</button>
+                <button id="quitBtn" class="small-btn secondary">Quit to Menu</button>
             </div>
-            <button id="resumeBtn" class="menu-btn">Resume</button>
-            <button id="quitBtn" class="small-btn secondary">Quit to Menu</button>
         </div>
     </div>
 

@@ -351,6 +351,82 @@ body {
     pointer-events: none;
 }
 
-.toast.show {
-    opacity: 1;
+/* Settings Modal */
+.settings-content {
+    width: 600px;
+    max-width: 90%;
+    text-align: left;
+}
+
+.settings-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #30363d;
+    padding-bottom: 10px;
+}
+
+.tab-btn {
+    background: transparent;
+    border: none;
+    color: #8b949e;
+    font-size: 1rem;
+    padding: 8px 16px;
+    cursor: pointer;
+    border-radius: 6px;
+    font-family: 'Orbitron', sans-serif;
+    transition: all 0.2s;
+}
+
+.tab-btn.active {
+    background: #238636;
+    color: white;
+}
+
+.tab-pane {
+    display: none;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.tab-pane.active {
+    display: block;
+}
+
+/* Combos List */
+.combo-item {
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 10px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 5px;
+}
+
+.combo-name {
+    color: #58a6ff;
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+.combo-keys {
+    font-family: monospace;
+    color: #e3b341;
+    text-align: right;
+    font-weight: bold;
+}
+
+.combo-desc {
+    grid-column: 1 / -1;
+    color: #8b949e;
+    font-size: 0.9rem;
+}
+
+.button-column {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
 }

@@ -13,6 +13,8 @@ let isGameOver = false;
 const pauseMenu = document.getElementById('pauseMenu');
 const rematchModal = document.getElementById('rematchModal');
 const toastEl = document.getElementById('toast');
+// Settings UI
+const settingsModal = document.getElementById('settingsModal');
 
 // --- UTILS ---
 function showToast(msg) {
@@ -24,8 +26,13 @@ function showToast(msg) {
 function resizeCanvas() {
     const gameContainer = document.querySelector(".game-container");
     const gameInfo = document.querySelector(".game-info");
-    canvas.width = gameContainer.clientWidth;
-    canvas.height = gameContainer.clientHeight - gameInfo.offsetHeight;
+    const w = gameContainer ? gameContainer.clientWidth : window.innerWidth;
+    const h = gameContainer ? (gameContainer.clientHeight - (gameInfo ? gameInfo.offsetHeight : 0)) : window.innerHeight;
+
+    if (w > 0 && h > 0) {
+        canvas.width = w;
+        canvas.height = h;
+    }
 }
 window.addEventListener('load', resizeCanvas);
 window.addEventListener('resize', resizeCanvas);
@@ -36,7 +43,7 @@ class Stickman {
         this.id = id;
         this.x = x;
         this.y = y;
-        this.baseX = x; // for reset
+        this.baseX = x;
         this.baseY = y;
 
         // Physics
@@ -45,7 +52,7 @@ class Stickman {
         this.width = 100;
         this.height = 100;
         this.color = color;
-        this.speed = 6; // slightly faster
+        this.speed = 6;
         this.gravity = 0.6;
         this.jumpPower = -12;
 
@@ -63,14 +70,16 @@ class Stickman {
         this.isDashing = false;
         this.dashCooldown = 0;
         this.dashTimer = 0;
-        this.lastDashInput = 0; // For double tap or hold logic
 
-        // Combat
+        // Combat & Combos
         this.isAttacking = false;
         this.attackType = null;
         this.attackFrame = 0;
         this.lastShotTime = 0;
         this.projectiles = [];
+
+        this.comboKeys = [];
+        this.lastComboTime = 0;
 
         // Animation
         this.walkFrame = 0;
@@ -85,30 +94,66 @@ class Stickman {
         this.isAttacking = false;
         this.isDashing = false;
         this.projectiles = [];
+        this.comboKeys = [];
+    }
+
+    registerComboInput(key) {
+        const now = Date.now();
+        if (now - this.lastComboTime > 1000) {
+            this.comboKeys = []; // Reset if too slow
+        }
+        this.comboKeys.push(key);
+        this.lastComboTime = now;
+
+        // Limit buffer
+        if (this.comboKeys.length > 5) this.comboKeys.shift();
+
+        this.checkCombos();
+    }
+
+    checkCombos() {
+        const seq = this.comboKeys.join('');
+
+        // Define Combos (i=punch, o=kick)
+        if (seq.endsWith('iii')) {
+            showToast("TRIPLE PUNCH!");
+            this.performAttack('combo_triple_punch');
+            Network.send({ type: 'attack', attackType: 'combo_triple_punch' });
+            this.comboKeys = [];
+        } else if (seq.endsWith('ooo')) {
+            showToast("SPIN KICK!");
+            this.performAttack('combo_spin_kick');
+            Network.send({ type: 'attack', attackType: 'combo_spin_kick' });
+            this.comboKeys = [];
+        } else if (seq.endsWith('io')) {
+            showToast("UPPERCUT!");
+            this.performAttack('combo_uppercut');
+            Network.send({ type: 'attack', attackType: 'combo_uppercut' });
+            this.comboKeys = [];
+        }
     }
 
     update() {
         if (this.health <= 0) return;
 
-        // --- DASH LOGIC (Hold Q) ---
+        // --- DASH LOGIC ---
         if (this.dashCooldown > 0) this.dashCooldown--;
 
         if (this.isDashing) {
             this.dashTimer--;
             if (this.dashTimer <= 0) {
                 this.isDashing = false;
-                this.dashCooldown = 40; // Cooldown
-                this.velX *= 0.1; // Stop momentum
+                this.dashCooldown = 40;
+                this.velX *= 0.1;
             } else {
-                this.velX = this.facing * 25; // Dash Speed
-                this.velY = 0; // Float during dash
+                this.velX = this.facing * 25;
+                this.velY = 0;
             }
         } else {
-            // Normal Physics
             this.x += this.velX;
             this.velY += this.gravity;
             this.y += this.velY;
-            this.velX *= 0.82; // Friction
+            this.velX *= 0.82;
         }
 
         // --- WALLS & FLOOR ---
@@ -131,7 +176,7 @@ class Stickman {
     }
 
     move(dir) {
-        if (this.isDashing || this.isAttacking) return;
+        if (this.isDashing) return; // Allow moving while attacking? No, restrictive
         if (dir === 'left') {
             this.velX = -this.speed;
             this.facing = -1;
@@ -153,29 +198,26 @@ class Stickman {
     startDash() {
         if (this.canDash && this.dashCooldown === 0 && !this.isDashing) {
             this.isDashing = true;
-            this.dashTimer = 8; // Duration
+            this.dashTimer = 8;
             this.canDash = false;
-            // Air dash uses up resources? Maybe limit to 1 per air?
             if (!this.isGrounded) this.canDash = false;
         }
     }
-
-    // --- COMBAT ACTIONS ---
-    // Note: These methods initiate the action LOCALY and send to network
-    // The visual/logic is shared.
 
     punch() {
         if (this.isAttacking) return;
         this.performAttack('punch');
         Network.send({ type: 'attack', attackType: 'punch' });
-        this.checkHit(5, 100);
+        this.checkHit(5, 120); // slightly increased range
+        this.registerComboInput('i');
     }
 
     kick() {
         if (this.isAttacking) return;
         this.performAttack('kick');
         Network.send({ type: 'attack', attackType: 'kick' });
-        this.checkHit(8, 120);
+        this.checkHit(8, 140);
+        this.registerComboInput('o');
     }
 
     shoot() {
@@ -195,16 +237,20 @@ class Stickman {
         this.isAttacking = true;
         this.attackType = type;
         this.attackFrame = 0;
-        setTimeout(() => { this.isAttacking = false; }, type === 'kick' ? 400 : 300);
+
+        let duration = 300;
+        if (type.startsWith('combo')) duration = 600; // longer combo anim
+        else if (type === 'kick') duration = 400;
+
+        setTimeout(() => { this.isAttacking = false; }, duration);
     }
 
     checkHit(damage, range) {
         const enemy = remotePlayers['opponent'];
         if (enemy) {
             // Hitbox Logic based on Facing Direction
-            // Check if enemy is in FRONT of me
             const dx = enemy.x - this.x;
-            const inFront = (this.facing === 1 && dx > -20) || (this.facing === -1 && dx < 20);
+            const inFront = (this.facing === 1 && dx > -50) || (this.facing === -1 && dx < 50); // More generous
 
             const dist = Math.hypot((enemy.x + 50) - (this.x + 50), (enemy.y + 50) - (this.y + 50));
 
@@ -269,15 +315,28 @@ class Stickman {
             legL = 0.5; legR = -0.2; arm = -1.5; // Jump pose
         }
 
-        // Combat Overrides
+        // Attack Anims
         let punchOffset = 0;
         if (this.isAttacking) {
-            this.attackFrame += 0.25;
+            this.attackFrame += 0.2;
+
             if (this.attackType === 'punch') {
-                punchOffset = 25 * Math.sin(this.attackFrame * Math.PI); // Jab
+                punchOffset = 25 * Math.sin(this.attackFrame * Math.PI);
                 arm = -1.5;
             } else if (this.attackType === 'kick') {
-                legR = -1.5 * Math.sin(this.attackFrame * Math.PI); // High kick
+                legR = -1.5 * Math.sin(this.attackFrame * Math.PI);
+            } else if (this.attackType === 'combo_triple_punch') {
+                // Fast flurry
+                punchOffset = 30 * Math.sin(this.attackFrame * Math.PI * 3);
+                arm = -1.5;
+            } else if (this.attackType === 'combo_spin_kick') {
+                // Spin body
+                ctx.rotate(this.attackFrame * Math.PI * 2);
+                legR = -2.0;
+            } else if (this.attackType === 'combo_uppercut') {
+                // Upward punch
+                arm = -2.5;
+                // Maybe lift char visual slightly
             }
         }
 
@@ -295,13 +354,15 @@ class Stickman {
         ctx.beginPath(); ctx.moveTo(0, -23); ctx.lineTo(0, 15); ctx.stroke();
 
         // Legs
-        ctx.beginPath(); ctx.moveTo(0, 15); ctx.lineTo(Math.sin(legL) * 20, 45 + Math.cos(legL) * 5); ctx.stroke(); // Back Right
-        ctx.beginPath(); ctx.moveTo(0, 15); ctx.lineTo(Math.sin(legR) * 20, 45 + Math.cos(legR) * 5); ctx.stroke(); // Front Left
+        ctx.beginPath(); ctx.moveTo(0, 15); ctx.lineTo(Math.sin(legL) * 20, 45 + Math.cos(legL) * 5); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, 15); ctx.lineTo(Math.sin(legR) * 20, 45 + Math.cos(legR) * 5); ctx.stroke();
 
         // Arms
         ctx.beginPath(); ctx.moveTo(0, -15);
-        if (this.attackType === 'punch' && this.isAttacking) {
+        if ((this.attackType === 'punch' || this.attackType === 'combo_triple_punch') && this.isAttacking) {
             ctx.lineTo(25 + punchOffset, -15);
+        } else if (this.attackType === 'combo_uppercut' && this.isAttacking) {
+            ctx.lineTo(20, -40); // Upward
         } else {
             ctx.lineTo(15, 10 + arm * 10);
         }
@@ -321,8 +382,10 @@ class Stickman {
         ctx.fillText(this.username, this.x + 50, this.y - 20);
 
         if (isLocal) {
-            document.getElementById('localHealth').style.width = this.health + '%';
-            document.getElementById('localScore').textContent = this.score;
+            const hpBar = document.getElementById('localHealth');
+            const scText = document.getElementById('localScore');
+            if (hpBar) hpBar.style.width = this.health + '%';
+            if (scText) scText.textContent = this.score;
         }
     }
 }
@@ -333,11 +396,10 @@ const Network = {
     conn: null,
 
     init(username, isHost, targetId) {
-        // Generate short random ID for easier sharing
         const peerOpt = isHost ? {
             debug: 1,
-            id: generateRoomCode() // Custom short ID
-        } : { debug: 1 }; // Client gets auto ID
+            id: generateRoomCode()
+        } : { debug: 1 };
 
         this.peer = new Peer(isHost ? peerOpt.id : null, { debug: 1 });
 
@@ -375,13 +437,7 @@ const Network = {
         conn.on('data', (data) => handleData(data));
         conn.on('close', () => {
             showToast("Opponent Left");
-            // Maybe reset game state
         });
-
-        // If Host, start game
-        if (localPlayer.id === 'local_host') { // dumb check
-            // actually rely on handshake
-        }
     },
 
     send(data) {
@@ -390,7 +446,6 @@ const Network = {
 };
 
 function generateRoomCode() {
-    // Generate a 4-char random uppsercase string
     const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     let result = '';
     for (let i = 0; i < 4; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
@@ -405,39 +460,31 @@ function handleData(data) {
 
     switch (data.type) {
         case 'handshake':
-            // Host receives this from joining Client
             opp.username = data.username;
             console.log("Received handshake from", data.username);
 
             if (localPlayer.id === 'local_host') {
-                // Reply to Client so they can start!
                 Network.send({
                     type: 'handshake_ack',
                     username: localPlayer.username
                 });
-
                 showToast(`${data.username} Joined!`);
                 if (!isGameStarted) startGameUI();
             }
             break;
 
         case 'handshake_ack':
-            // Client receives this from Host
             opp.username = data.username;
-            console.log("Received handshake_ack from", data.username);
-
             showToast(`Connected to ${data.username}!`);
             if (!isGameStarted) startGameUI();
             break;
 
         case 'update':
-            // Simple interpolation: Move towards target
-            // But for simple twitch game, snapping with simple lerp on physics is easiest
-            // Just update props for now
+            // Interpolate?
             opp.x = data.x;
             opp.y = data.y;
             opp.facing = data.facing;
-            opp.velX = data.velX; // for animation
+            opp.velX = data.velX;
             opp.health = data.health;
             break;
 
@@ -493,7 +540,7 @@ function resetGame() {
 
 function startGameUI() {
     welcomeScreen.style.display = 'none';
-    document.getElementById('roomControls').style.display = 'none'; // Fade out
+    document.getElementById('roomControls').style.display = 'none';
     isGameStarted = true;
     resizeCanvas();
     update();
@@ -507,20 +554,19 @@ window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
         isPaused = !isPaused;
         pauseMenu.style.display = isPaused ? 'flex' : 'none';
+        return;
     }
 
     if (isPaused || !isGameStarted) return;
 
     keys[e.key.toLowerCase()] = true;
 
-    // Actions that shouldn't repeat on hold
     const k = e.key.toLowerCase();
 
     if (k === 'i') localPlayer.punch();
     if (k === 'o') localPlayer.kick();
     if (k === 'p') localPlayer.shoot();
 
-    // Logic for Shift (Air Dash) or Q (Ground Dash)
     if (k === 'shift' && !localPlayer.isGrounded) localPlayer.startDash();
 });
 
@@ -531,6 +577,9 @@ function update() {
     requestAnimationFrame(update);
 
     if (isPaused) return;
+
+    // Safety
+    if (canvas.width === 0) resizeCanvas();
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -545,12 +594,12 @@ function update() {
 
         if (keys[' ']) localPlayer.jump();
 
-        if (keys['q']) localPlayer.startDash(); // Hold/Press Q Check
+        if (keys['q']) localPlayer.startDash();
 
         localPlayer.update();
         localPlayer.draw(true);
 
-        // Sync
+        // Sync (Throttled?)
         Network.send({
             type: 'update',
             x: localPlayer.x,
@@ -568,7 +617,30 @@ function update() {
     }
 }
 
-// --- BUTTONS ---
+// --- MENUS & EVENTS ---
+function toggleSettings() {
+    const isVisible = settingsModal.style.display !== 'none';
+    settingsModal.style.display = isVisible ? 'none' : 'flex';
+}
+
+document.getElementById('settingsBtn').addEventListener('click', toggleSettings);
+document.getElementById('closeSettingsBtn').addEventListener('click', toggleSettings);
+document.getElementById('pauseSettingsBtn').addEventListener('click', () => {
+    // Hide pause menu, show settings
+    toggleSettings();
+});
+
+// Settings Tabs
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+
+        btn.classList.add('active');
+        document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
+    });
+});
+
 document.getElementById('createRoomBtn').addEventListener('click', () => {
     const name = document.getElementById('usernameInput').value;
     if (!name) return alert("Name Required");
@@ -577,7 +649,6 @@ document.getElementById('createRoomBtn').addEventListener('click', () => {
     document.getElementById('roomControls').style.display = 'block';
     document.getElementById('hostArea').style.display = 'block';
 
-    // Setup Local Player as Host
     localPlayer = new Stickman(100, 300, "#58a6ff", 'local_host');
     localPlayer.username = name;
 
@@ -592,21 +663,19 @@ document.getElementById('joinRoomBtn').addEventListener('click', () => {
     document.getElementById('roomControls').style.display = 'block';
     document.getElementById('joinArea').style.display = 'block';
 
-    // Setup Local Player as Client
     localPlayer = new Stickman(800, 300, "#58a6ff", 'local_client');
     localPlayer.facing = -1;
     localPlayer.username = name;
 });
 
 document.getElementById('connectBtn').addEventListener('click', () => {
-    const id = document.getElementById('destRoomId').value.toUpperCase(); // Code is upper
+    const id = document.getElementById('destRoomId').value.toUpperCase();
     const name = document.getElementById('usernameInput').value;
     if (!id) return;
 
     Network.init(name, false, id);
     document.getElementById('joinStatus').textContent = "Connecting...";
 });
-
 
 document.getElementById('copyBtn').addEventListener('click', () => {
     navigator.clipboard.writeText(document.getElementById('myRoomId').textContent);
@@ -624,4 +693,5 @@ document.getElementById('rematchBtn').addEventListener('click', () => {
     document.getElementById('rematchStatus').textContent = "Waiting for confirm...";
     Network.send({ type: 'rematch_req' });
 });
+
 document.getElementById('exitMatchBtn').addEventListener('click', () => location.reload());
