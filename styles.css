@@ -447,3 +447,55 @@ canvas {
     gap: 10px;
     width: 100%;
 }
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .game-info {
+        padding: 10px;
+    }
+
+    .player-stats {
+        gap: 10px;
+    }
+
+    .health-container,
+    .score-container {
+        min-width: 100px;
+        padding: 10px;
+    }
+
+    .score {
+        font-size: 1.4rem;
+    }
+
+    .modal-content {
+        width: 85%;
+        padding: 20px;
+    }
+
+    .settings-content {
+        width: 95%;
+    }
+
+    h1 {
+        font-size: 2rem !important;
+    }
+
+    .combo-item {
+        grid-template-columns: 1fr;
+    }
+
+    .combo-keys {
+        text-align: left;
+    }
+}
+
+@media (min-width: 2000px) {
+    .game-info {
+        padding: 40px;
+    }
+
+    .score {
+        font-size: 2.5rem;
+    }
+}

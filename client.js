@@ -26,13 +26,19 @@ function showToast(msg) {
 function resizeCanvas() {
     const gameContainer = document.querySelector(".game-container");
     const gameInfo = document.querySelector(".game-info");
+
+    // Get actual display size
     const w = gameContainer ? gameContainer.clientWidth : window.innerWidth;
     const h = gameContainer ? (gameContainer.clientHeight - (gameInfo ? gameInfo.offsetHeight : 0)) : window.innerHeight;
 
-    if (w > 0 && h > 0) {
-        canvas.width = w;
-        canvas.height = h;
-    }
+    // Set internal resolution to match display size (1:1 pixel mapping)
+    // Avoid scaling issues by setting both style and attribute
+    canvas.style.width = w + 'px';
+    canvas.style.height = h + 'px';
+    canvas.width = w;
+    canvas.height = h;
+
+    // Reset translation/scale context if needed, but Stickman draw handles its own
 }
 window.addEventListener('load', resizeCanvas);
 window.addEventListener('resize', resizeCanvas);
@@ -294,33 +300,38 @@ class Stickman {
     }
 
     draw(isLocal = false) {
-        const scaleX = this.width / 50;
-        const scaleY = this.height / 80;
+        // Dynamic Scaling based on canvas height to keep consistent look across devices
+        // Base height calculation on a standard 600px height for reference
+        const refHeight = 600;
+        // Use a more conservative scale factor to accurate rendering
+        const scaleFactor = Math.min(canvas.height / refHeight, 1.2);
 
         ctx.save();
-        ctx.translate(this.x + 50, this.y + 50);
-        ctx.scale(this.facing * scaleX, scaleY);
+
+        // Draw position - adjusted for scale
+        ctx.translate(this.x + (this.width / 2), this.y + (this.height / 2));
+        ctx.scale(this.facing * scaleFactor, scaleFactor);
 
         // Procedural Animation
         let legL = 0, legR = 0, arm = 0;
         let bodyRot = 0;
 
         if (this.isDashing) {
-            legL = 1.0; legR = 0.5; arm = 1.5; // Naruto run style
-            ctx.globalAlpha = 0.7; // Ghost effect
+            legL = 1.0; legR = 0.5; arm = 1.5;
+            ctx.globalAlpha = 0.7;
         } else if (Math.abs(this.velX) > 0.5 && this.isGrounded) {
             this.walkFrame += 0.2;
             legL = Math.sin(this.walkFrame);
             legR = Math.sin(this.walkFrame + Math.PI);
             arm = -Math.sin(this.walkFrame);
         } else if (!this.isGrounded) {
-            legL = 0.5; legR = -0.2; arm = -1.5; // Jump pose
+            legL = 0.5; legR = -0.2; arm = -1.5;
         }
 
-        // Attack Anims - SLOWER
+        // Attack Anims
         let punchOffset = 0;
         if (this.isAttacking) {
-            this.attackFrame += 0.05; // SIGNIFICANTLY SLOWER
+            this.attackFrame += 0.05;
 
             if (this.attackType === 'punch') {
                 punchOffset = 25 * Math.sin(this.attackFrame * Math.PI * 2);
@@ -328,15 +339,12 @@ class Stickman {
             } else if (this.attackType === 'kick') {
                 legR = -1.5 * Math.sin(this.attackFrame * Math.PI * 2);
             } else if (this.attackType === 'combo_triple_punch') {
-                // Fast flurry
-                punchOffset = 30 * Math.sin(this.attackFrame * Math.PI * 8); // Was *3
+                punchOffset = 30 * Math.sin(this.attackFrame * Math.PI * 8);
                 arm = -1.5;
             } else if (this.attackType === 'combo_spin_kick') {
-                // Spin body
-                bodyRot = this.attackFrame * Math.PI * 4; // Was *2
+                bodyRot = this.attackFrame * Math.PI * 4;
                 legR = -2.0;
             } else if (this.attackType === 'combo_uppercut') {
-                // Upward punch
                 arm = -2.5 * Math.sin(this.attackFrame * Math.PI);
             }
         }
@@ -382,6 +390,8 @@ class Stickman {
 
         // Username
         ctx.fillStyle = "white"; ctx.font = "14px 'Orbitron'"; ctx.textAlign = "center";
+
+        // Adjust text pos for scale
         ctx.fillText(this.username, this.x + 50, this.y - 20);
 
         if (isLocal) {
@@ -505,11 +515,20 @@ function handleData(data) {
             break;
 
         case 'rematch_req':
-            if (confirm("Opponent wants a rematch. Accept?")) {
-                resetGame();
-                Network.send({ type: 'rematch_ack' });
-            }
+            // Opponent requested rematch
+            // Automatically accept if we are in game over state? No, show a Toast/Button or just a simple alert for now
+            // But user said "Resume still stuck on waiting". Let's simply trigger a reset if ONE person asks
+            // Or better: Show a status update.
+            const status = document.getElementById('rematchStatus');
+            if (status) status.textContent = "Opponent wants Rematch...";
+
+            // For better UX without complex UI state sync:
+            // If I also clicked rematch, then we go. 
+            // Simplification: If one person requests, we restart.
+            resetGame();
+            Network.send({ type: 'rematch_ack' });
             break;
+
         case 'rematch_ack':
             resetGame();
             break;
@@ -524,8 +543,8 @@ function checkWinCondition() {
 
         const winner = localPlayer.health > 0 ? "YOU WIN" : "YOU LOSE";
         document.getElementById('winnerText').textContent = winner;
+        document.getElementById('rematchStatus').textContent = ""; // Clear status
 
-        // Show after delay
         setTimeout(() => {
             rematchModal.style.display = 'flex';
         }, 1000);
