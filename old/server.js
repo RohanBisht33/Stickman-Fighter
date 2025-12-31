@@ -5,10 +5,10 @@ const { Server } = require("socket.io");
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
-  }
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+    }
 });
 
 app.use(express.static(__dirname));
@@ -17,7 +17,7 @@ let players = {};
 
 // Function to get random initial position
 function getRandomPosition() {
-    return { 
+    return {
         x: Math.random() * 700 + 50,  // Random x between 50-750
         y: 300,  // Fixed ground level
         health: 100,
@@ -32,10 +32,10 @@ io.on("connection", (socket) => {
     players[socket.id] = getRandomPosition();
     // Broadcast updated player list to all clients
     io.emit("updatePlayers", players);
- 
+
     socket.on("playerMove", (data) => {
         console.log("Received player move:", data); // Debug log
-        
+
         if (players[socket.id]) {
             // Update all player properties
             players[socket.id] = {
@@ -52,7 +52,7 @@ io.on("connection", (socket) => {
                 isGameStarted: data.isGameStarted || false
             };
         }
-        
+
         // Broadcast updated players to all clients
         io.emit("updatePlayers", players);
     });
@@ -66,12 +66,16 @@ io.on("connection", (socket) => {
             io.emit("updatePlayers", players);
         }
     });
+
+    socket.on("shoot", (data) => {
+        io.emit("playerShoot", data);
+    });
     socket.on("disconnect", () => {
         console.log("Player disconnected:", socket.id);
         delete players[socket.id];
         io.emit("updatePlayers", players);
     });
-    
+
 });
 
 const PORT = process.env.PORT || 3000;

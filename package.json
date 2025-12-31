@@ -1,15 +1,11 @@
 {
-  "name": "stickman-fighter",
-  "version": "1.0.0",
-  "description": "Multiplayer Stickman Game",
-  "main": "server.js",
+  "name": "stickman-fighter-p2p",
+  "version": "2.0.0",
+  "description": "P2P Stickman Fighter",
   "scripts": {
-    "start": "node server.js"
+    "start": "echo 'This is a static site now. Open index.html directly or use live-server.'"
   },
-  "dependencies": {
-    "express": "^4.18.2",
-    "socket.io": "^4.7.2"
-  },
+  "dependencies": {},
   "engines": {
     "node": ">=16.0.0"
   }

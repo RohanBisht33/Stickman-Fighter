@@ -7,27 +7,42 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <div class="welcome-screen" id="welcomeScreen">
         <div class="welcome-content">
             <h1>Stickman Fighter</h1>
-            <p>Join the battle and show your fighting skills!</p>
+            <p>P2P Multiplayer - Host or Join a 1v1</p>
+            
             <div class="username-container">
                 <div class="username-input-wrapper">
-                    <input 
-                        type="text" 
-                        id="usernameInput" 
-                        class="username-input" 
-                        placeholder="Enter your fighter name" 
-                        maxlength="12" 
-                        required
-                    >
+                    <input type="text" id="usernameInput" class="username-input" placeholder="Your Name" maxlength="12">
                     <span class="input-icon">👤</span>
                 </div>
-                <div class="username-validation">
-                    <span id="usernameError" class="error-message"></span>
-                </div>
             </div>
-            <button id="startButton">Start Game</button>
+
+            <div class="mode-selection" id="modeSelection">
+                <button id="createRoomBtn" class="menu-btn">Create Room (Host)</button>
+                <button id="joinRoomBtn" class="menu-btn">Join Room</button>
+            </div>
+
+            <div class="room-controls" id="roomControls" style="display: none;">
+                <div id="hostArea" style="display: none;">
+                    <p>Share this Room ID with your friend:</p>
+                    <div class="room-id-display">
+                        <span id="myRoomId">Generating...</span>
+                        <button id="copyBtn" class="small-btn">📋</button>
+                    </div>
+                    <p class="status-text" id="hostStatus">Waiting for opponent...</p>
+                </div>
+
+                <div id="joinArea" style="display: none;">
+                    <input type="text" id="destRoomId" class="username-input" placeholder="Paste Room ID here">
+                    <button id="connectBtn" class="menu-btn" style="margin-top: 10px;">Connect & Fight</button>
+                    <p class="status-text" id="joinStatus"></p>
+                </div>
+                
+                <button id="backBtn" class="small-btn secondary">Back</button>
+            </div>
         </div>
     </div>
 

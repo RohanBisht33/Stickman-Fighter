@@ -3,704 +3,569 @@ const ctx = canvas.getContext("2d");
 document.addEventListener('DOMContentLoaded', () => {
     const usernameInput = document.getElementById('usernameInput');
     const usernameError = document.getElementById('usernameError');
-    const startButton = document.getElementById("startButton");
 });
 const welcomeScreen = document.getElementById("welcomeScreen");
 
-let players = {};
+// Global Game State
+const remotePlayers = {}; // Opponent instances
 let localPlayer = null;
 let isGameStarted = false;
 
-//animation now
+// --- UTILS ---
 function validateUsername() {
-    const username = usernameInput.value.trim();
-    
-    // Clear previous error
-    usernameError.textContent = '';
-    
-    // Validation rules
-    if (username.length === 0) {
-        usernameError.textContent = 'Please enter a username';
-        return false;
-    }
-    
-    if (username.length < 3) {
-        usernameError.textContent = 'Username must be at least 3 characters';
-        return false;
-    }
-    
-    if (username.length > 12) {
-        usernameError.textContent = 'Username must be 12 characters or less';
-        return false;
-    }
-    
-    // Optional: Check for valid characters
-    const validUsernameRegex = /^[a-zA-Z0-9_ ]+$/;
-    if (!validUsernameRegex.test(username)) {
-        usernameError.textContent = 'Username can only contain letters, numbers, and underscores';
-        return false;
-    }
-    
+    const username = document.getElementById('usernameInput').value.trim();
+    if (username.length === 0) return false;
     return true;
 }
-
-// Real-time validation
-usernameInput.addEventListener('input', validateUsername);
-
-
-window.addEventListener("beforeunload", () => {
-    window.socket.emit("playerInactive", { id: window.socket.id });
-});
 
 function resizeCanvas() {
     const gameContainer = document.querySelector(".game-container");
     const gameInfo = document.querySelector(".game-info");
-    
+
     canvas.width = gameContainer.clientWidth;
     canvas.height = gameContainer.clientHeight - gameInfo.offsetHeight;
-    
-    // Send new canvas size to the server
+
     canvas.style.width = '100%';
     canvas.style.height = '100%';
-
 }
-// Call on load and window resize
 window.addEventListener('load', resizeCanvas);
 window.addEventListener('resize', resizeCanvas);
 
-function updateHealthDisplay() {
-    const healthFill = document.getElementById('localHealth');
-    if (healthFill) {
-        healthFill.style.width = `${this.health}%`;
-        healthFill.textContent = `${this.health}%`;
-        
-        // Change color based on health
-        if (this.health > 70) {
-            healthFill.style.backgroundColor = '#4CAF50';
-        } else if (this.health > 30) {
-            healthFill.style.backgroundColor = '#FFC107';
-        } else {
-            healthFill.style.backgroundColor = '#F44336';
-        }
-    }
-}
+window.addEventListener("beforeunload", () => {
+    // Optional: Notify peer of disconnect if possible
+});
 
-function updateScoreDisplay() {
-    const scoreElement = document.getElementById('localScore');
-    if (scoreElement) {
-        scoreElement.textContent = `Score: ${this.score}`;
-    }
-}
-
+// --- STICKMAN CLASS ---
 class Stickman {
-    constructor(x, y, color, serverId) {
-        // Position and movement
-        this.serverId = serverId; // Unique server-side ID
-        this.baseX = x;  // Original spawn X
-        this.baseY = y;  // Original spawn Y
-
+    constructor(x, y, color, id) {
+        this.id = id;
         this.x = x;
         this.y = y;
-
-        // Add more robust positioning tracking
-        this.spawnPercentageX = x / canvas.width;
-        this.spawnPercentageY = y / canvas.height;
+        this.baseX = x;
+        this.baseY = y;
 
         this.velX = 0;
         this.velY = 0;
 
-        // Dimensions
         this.width = 100;
         this.height = 100;
         this.color = color;
 
-        // Movement properties
         this.speed = 5;
         this.gravity = 0.5;
-        this.jumpPower = -10;
-        
-        // State tracking
-        this.facing = 1; // 1 for right, -1 for left
-        this.isColliding = false;
-        // Enhanced jump tracking
-        this.maxJumps = 2;  // Maximum number of jumps
-        this.jumpsRemaining = this.maxJumps;
-        this.isGrounded = true;  // Clear grounded state
-        this.jumpCooldown = 0;  // Prevent rapid jump spam
-        this.canAirDash = true;
-        this.spacePressed = false;
-        
-        //dash
-        this.dashCooldown = 0;
-        this.canDash = true; // Allow dash only when grounded
-        this.dashDuration = 1; // Frames of dash
-        this.isDashing = false;
-        this.dashKeyHoldTime = 0;
-        this.dashKeyThreshold = 100;
-        
-        // Combat properties
+        this.jumpPower = -12; // Slightly higher jump
+
+        this.facing = 1;
+        this.isGrounded = true;
+        this.jumpsRemaining = 2;
+        this.jumpCooldown = 0;
+
         this.health = 100;
         this.score = 0;
         this.username = "";
-        
-        // Animation and combo
-        this.lastPunchTime = 0;
-        this.lastKickTime = 0;
 
+        // Dash
+        this.canDash = true;
+        this.isDashing = false;
+        this.dashCooldown = 0;
+        this.dashDuration = 0;
 
-        this.currentCombo = [];
-        this.lastComboTime = 0;
-    }
+        // Animation
+        this.walkFrame = 0;
+        this.isAttacking = false;
+        this.attackType = null;
+        this.attackFrame = 0;
 
-    die() {
-        // Reset to welcome screen
-        welcomeScreen.style.display = 'block';
-        isGameStarted = false;
-        window.socket.disconnect();
-        
-        // Reset local player
-        localPlayer = null;
-        players = {};
-    }
-
-    move(direction) {
-        switch(direction) {
-            case "left":
-                this.velX = -this.speed;
-                this.facing = -1;
-                break;
-            case "right":
-                this.velX = this.speed;
-                this.facing = 1;
-                break;
-        }
-    }
-
-    jump() {
-        // Reset cooldown if key is released
-        if (this.jumpCooldown > 0) {
-            this.jumpCooldown--;
-        }
-    
-        // Allow jump only when key is first pressed, not held
-        if (keys[' '] && this.jumpsRemaining > 0 && this.jumpCooldown === 0) {
-            this.velY = this.jumpPower;
-            this.jumpsRemaining--;
-            this.isGrounded = false;
-            this.canDash = false;
-            this.canAirDash = true;
-            this.jumpCooldown = 10;
-            keys[' '] = false; // Prevent continuous jumping
-        }
-        
-        // Reset jump when player lands
-        if (this.isGrounded) {
-            this.jumpsRemaining = this.maxJumps;
-            this.jumpCooldown = 0;
-        }
-    }
-
-    airDash() {
-        if (this.canAirDash && !this.onGround) {
-            const dashSpeed = 40;
-            this.velX = this.velX > 0 ? dashSpeed : -dashSpeed;
-            this.canAirDash = false;
-        }
-    }
-    Dash() {
-        if (this.canDash && !this.isDashing && this.dashCooldown === 0) {
-            const dashSpeed = 80;
-            this.velX = this.facing * dashSpeed;
-            this.isDashing = true;
-            this.dashDuration = 10; // 10 frames of dash
-            this.canDash = false;
-        }
-    }
-
-    resetToSpawnPosition() {
-        this.x = this.baseX;
-        this.y = this.baseY;
-        this.velX = 0;
-        this.velY = 0;
+        // Projectiles
+        this.projectiles = [];
+        this.lastShotTime = 0;
     }
 
     update() {
+        // --- MOVEMENT & PHYSICS ---
+        if (this.dashCooldown > 0) this.dashCooldown--;
 
-        if (keys['q']) {
-            this.dashKeyHoldTime++;
-        } else {
-            this.dashKeyHoldTime = 0;
-        }
-
-        // Dash activation after holding key for specified duration
-        if (this.dashKeyHoldTime >= this.dashKeyThreshold && this.canDash) {
-            this.Dash();
-            this.dashKeyHoldTime = 0; // Reset hold time
-        }
-
-        // Dash cooldown and duration management
         if (this.isDashing) {
             this.dashDuration--;
             if (this.dashDuration <= 0) {
                 this.isDashing = false;
-                this.canDash = false;
-                this.dashCooldown = 120; // 2 seconds cooldown at 30 fps
+                this.dashCooldown = 60;
+                this.velX = 0;
+            }
+        } else {
+            this.x += this.velX;
+            this.velY += this.gravity;
+            this.y += this.velY;
+
+            // Friction
+            this.velX *= 0.85;
+        }
+
+        // --- COLLISIONS ---
+        // Floor
+        if (this.y + this.height >= canvas.height - 34) {
+            this.y = canvas.height - 34 - this.height;
+            this.velY = 0;
+            this.isGrounded = true;
+            this.jumpsRemaining = 2;
+            this.canDash = true;
+        } else {
+            this.isGrounded = false;
+        }
+
+        // Walls
+        if (this.x < 0) { this.x = 0; this.velX = 0; }
+        if (this.x > canvas.width - this.width) { this.x = canvas.width - this.width; this.velX = 0; }
+
+        if (this.jumpCooldown > 0) this.jumpCooldown--;
+
+        if (this.health <= 0) {
+            // Die logic handled by Network/Game loop
+        }
+    }
+
+    move(dir) {
+        if (this.isDashing) return;
+        if (dir === 'left') {
+            this.velX = -this.speed;
+            this.facing = -1;
+        } else {
+            this.velX = this.speed;
+            this.facing = 1;
+        }
+    }
+
+    jump() {
+        if (this.jumpsRemaining > 0 && this.jumpCooldown === 0) {
+            this.velY = this.jumpPower;
+            this.jumpsRemaining--;
+            this.jumpCooldown = 15;
+            this.isGrounded = false;
+        }
+    }
+
+    dash() {
+        if (this.canDash && !this.isDashing && this.dashCooldown === 0) {
+            this.isDashing = true;
+            this.dashDuration = 10;
+            this.velX = this.facing * 20;
+            this.canDash = false;
+        }
+    }
+
+    punch() {
+        if (this.isAttacking) return;
+        this.isAttacking = true;
+        this.attackType = 'punch';
+        this.attackFrame = 0;
+
+        // Broadcast
+        Network.send({ type: 'attack', attackType: 'punch' });
+
+        // Hit Detection
+        this.checkMeleeHit(5, 100);
+
+        setTimeout(() => { this.isAttacking = false; }, 300);
+    }
+
+    kick() {
+        if (this.isAttacking) return;
+        this.isAttacking = true;
+        this.attackType = 'kick';
+        this.attackFrame = 0;
+
+        // Broadcast
+        Network.send({ type: 'attack', attackType: 'kick' });
+
+        // Hit Detection (longer range)
+        this.checkMeleeHit(8, 120);
+
+        setTimeout(() => { this.isAttacking = false; }, 400);
+    }
+
+    checkMeleeHit(damage, range) {
+        const enemy = remotePlayers['opponent'];
+        if (enemy) {
+            const dx = Math.abs((enemy.x + 50) - (this.x + 50));
+            const dy = Math.abs((enemy.y + 50) - (this.y + 50));
+
+            const isFacing = (this.facing === 1 && enemy.x > this.x) || (this.facing === -1 && enemy.x < this.x);
+
+            if (dx < range && dy < 100 && isFacing) {
+                // Determine Hit
+                enemy.health = Math.max(0, enemy.health - damage);
+                this.score += damage;
+
+                // Inform Peer
+                Network.send({ type: 'hit', newHealth: enemy.health });
             }
         }
+    }
 
-        // Cooldown management
-        if (this.dashCooldown > 0) {
-            this.dashCooldown--;
-        }
+    shoot() {
+        if (Date.now() - this.lastShotTime > 500) {
+            const vx = 15 * this.facing;
+            const startX = this.x + 50 + (30 * this.facing);
+            const startY = this.y + 40;
 
-        // Reset dash ability when grounded
-        if (this.isGrounded) {
-            this.canDash = true;
-        }
-        // Horizontal movement
-        this.x += this.velX;
-    
-        // Wall collision with immediate bounce
-        const wallWidth = 20; // Width of invisible walls
-        const bounceStrength = 10; // Stronger bounce to be noticeable
+            this.spawnProjectile(startX, startY, vx);
 
-        const screenWidth = canvas.width;
-        const screenHeight = canvas.height;
-    
+            Network.send({
+                type: 'attack',
+                attackType: 'shoot',
+                x: startX,
+                y: startY,
+                vx: vx
+            });
+            this.lastShotTime = Date.now();
+        }
+    }
 
-        // Left wall bounce
-        if (this.x < wallWidth && !this.isGrounded) {
-            this.x = wallWidth;
-            // Immediately reverse and amplify horizontal velocity
-            this.velX = Math.abs(this.velX) * bounceStrength;
-        }
-        else if(this.x < wallWidth && this.isGrounded){
-            this.x = wallWidth;
-        }
+    spawnProjectile(x, y, vx) {
+        this.projectiles.push({ x: x, y: y, vx: vx, life: 100, damage: 15 });
+    }
 
-        
-        // Right wall bounce
-        if (this.x > canvas.width - this.width - wallWidth && !this.isGrounded) {
-            this.x = canvas.width - this.width - wallWidth;
-            // Immediately reverse and amplify horizontal velocity
-            this.velX = -Math.abs(this.velX) * bounceStrength;
-        }
-        else if(this.x > canvas.width - this.width - wallWidth && this.isGrounded){
-            //this.x = wallWidth; for teleportation purposes
-            this.x = canvas.width - this.width - wallWidth;
-        }
+    updateProjectiles() {
+        for (let i = this.projectiles.length - 1; i >= 0; i--) {
+            let p = this.projectiles[i];
+            p.x += p.vx;
+            p.life--;
 
-        // Friction (apply after bounce to maintain bounce effect)
-        this.velX *= 0.8;
+            // Local collision check (My projectiles hitting enemy)
+            if (this === localPlayer) {
+                const enemy = remotePlayers['opponent'];
+                if (enemy) {
+                    if (p.x > enemy.x && p.x < enemy.x + 100 &&
+                        p.y > enemy.y && p.y < enemy.y + 100) {
 
-        // Vertical movement
-        this.velY += this.gravity;
-        this.y += this.velY;
-        // Reduce jump cooldown
-        if (this.jumpCooldown > 0) {
-            this.jumpCooldown--;
-        }
+                        enemy.health = Math.max(0, enemy.health - p.damage);
+                        this.score += p.damage;
+                        Network.send({ type: 'hit', newHealth: enemy.health });
 
-        // Ground collision
-        if (this.y + this.height >= canvas.height -50 ) {
-            this.y = canvas.height - this.height -50 ;
-            this.velY = 0;
-            // Reset to grounded state
-            this.isGrounded = true;
-            this.jumpsRemaining = this.maxJumps;
-            this.jumpCooldown = 0;
-            this.canDash = true;
-            this.canAirDash = false;
-        }
-        
-        if (this.health <= 0) {
-            this.die();
-        }
-        // Screen boundaries
-        for (let id in players) {
-            if (id !== window.socket.id) {
-                let enemy = players[id];
-                let mirroredX = (canvas.width - enemy.x) - this.width;
-                
-                let enemyStickman = new Stickman(mirroredX, enemy.y, "red");
-                
-                // Only log collision, no movement restriction
-                if (this.isColliding) {
-                    // Collision detected, check for attack inputs
-                    if (keys['j']) {
-                        this.punch();
-                    }
-                    if (keys['k']) {
-                        this.kick();
+                        p.life = 0; // Destroy projectile
                     }
                 }
             }
-    }
+
+            if (p.life <= 0) {
+                this.projectiles.splice(i, 1);
+            }
+        }
     }
 
-    // Method to draw wall boundaries (for visual debugging)
-    drawWalls() {
-        ctx.fillStyle = 'rgba(255, 0, 0, 0.1)'; // Semi-transparent red
-        
-        // Left wall
-        ctx.fillRect(0, 0, 20, canvas.height);
-        
-        // Right wall
-        ctx.fillRect(canvas.width - 20, 0, 20, canvas.height);
-    }
+    draw(isLocal = false) {
+        const scaleX = this.width / 50;
+        const scaleY = this.height / 80;
 
-    drawStickman() {
-        const scaleX = this.width / 50;  // Default width was 50
-        const scaleY = this.height / 80; // Default height was 80
-    
-        ctx.save();  
-        ctx.translate(this.x, this.y);  
-        ctx.scale(scaleX, scaleY);  
-    
-        ctx.fillStyle = this.color;
-    
-        // Head
-        ctx.beginPath();
-        ctx.arc(25, 20, 20, 0, Math.PI * 2);  // (Centered at 25, 20)
-        ctx.fill();
-    
-        // Eyes
-        ctx.fillStyle = "white";
-        ctx.beginPath();
-        ctx.arc(25 + (10 * (this.facing)), 15, 5, 0, Math.PI * 2);
-        ctx.fill();
-    
-        // Pupil
-        ctx.fillStyle = "black";
-        ctx.beginPath();
-        ctx.arc(25 + (10 * (this.facing)), 15, 2, 0, Math.PI * 2);
-        ctx.fill();
-    
-        // Body
+        ctx.save();
+        ctx.translate(this.x + 50, this.y + 50);
+        ctx.scale(this.facing * scaleX, scaleY);
+
+        // --- PROCEDURAL ANIMATION ---
+        let legAngle = 0;
+        let armAngle = 0;
+        let punchOffset = 0;
+        let kickOffset = 0;
+
+        // Walk
+        if (Math.abs(this.velX) > 0.5 && this.isGrounded) {
+            this.walkFrame += 0.2;
+            legAngle = Math.sin(this.walkFrame) * 0.5;
+            armAngle = -Math.sin(this.walkFrame) * 0.5;
+        } else {
+            this.walkFrame = 0;
+        }
+
+        // Attack
+        if (this.isAttacking) {
+            this.attackFrame += 0.2;
+            if (this.attackType === 'punch') {
+                punchOffset = 25 * Math.sin(this.attackFrame * Math.PI);
+                armAngle = -1.5;
+            } else if (this.attackType === 'kick') {
+                kickOffset = -Math.PI / 3 * Math.sin(this.attackFrame * Math.PI);
+            }
+            if (this.attackFrame >= 1) this.attackFrame = 0;
+        }
+
         ctx.strokeStyle = this.color;
-        ctx.lineWidth = 6;
-        ctx.beginPath();
-        ctx.moveTo(25, 40);
-        ctx.lineTo(25, 65);
-        ctx.stroke();
-    
-        // Arms
-        ctx.beginPath();
-        ctx.moveTo(25, 45);
-        ctx.lineTo(25 - 30, 55);
-        ctx.moveTo(25, 45);
-        ctx.lineTo(25 + 30, 55);
-        ctx.stroke();
-    
+        ctx.lineWidth = 4;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+
+        // Head
+        ctx.fillStyle = this.color;
+        ctx.beginPath(); ctx.arc(0, -35, 12, 0, Math.PI * 2); ctx.fill();
+
+        // Body
+        ctx.beginPath(); ctx.moveTo(0, -23); ctx.lineTo(0, 15); ctx.stroke();
+
         // Legs
         ctx.beginPath();
-        ctx.moveTo(25, 65);
-        ctx.lineTo(25 - 25, 90);
-        ctx.moveTo(25, 65);
-        ctx.lineTo(25 + 25, 90);
+        ctx.moveTo(0, 15); ctx.lineTo(Math.sin(legAngle + kickOffset) * 20, 45 + Math.cos(legAngle) * 5); ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(0, 15); ctx.lineTo(Math.sin(-legAngle) * 20, 45 + Math.cos(-legAngle) * 5); ctx.stroke();
+
+        // Arms
+        ctx.beginPath();
+        ctx.moveTo(0, -15);
+        if (this.attackType === 'punch' && this.isAttacking) {
+            ctx.lineTo(25 + punchOffset, -15);
+        } else {
+            ctx.lineTo(15, 10 + armAngle * 10);
+        }
         ctx.stroke();
-    
+
         ctx.restore();
-    }
-    
-    drawUsername() {
-        if (this.username) {
-            ctx.fillStyle = 'yellow'; // More visible color
-            ctx.font = '16px Arial'; // Larger font
-            ctx.textAlign = 'center';
-            ctx.fillText(this.username, this.x + this.width/2, this.y - 20); // Moved up a bit
-        }
-    }
-    
-    // Modify draw method to include username
-    draw(isLocalPlayer = false) {
-        if (this.isDashing) {
-            ctx.globalAlpha = 0.3; // Make slightly transparent when dashing
-        }
-        this.drawUsername(); // Add username above stickman
-        this.drawStickman();
 
-        ctx.globalAlpha = 1;
-        if (isLocalPlayer) {
-            this.updateHealthDisplay();
-            this.updateScoreDisplay();
+        // Projectiles
+        this.drawProjectiles();
+
+        // Username & UI
+        ctx.fillStyle = "white";
+        ctx.font = "14px 'Orbitron'";
+        ctx.textAlign = "center";
+        ctx.fillText(this.username, this.x + 50, this.y - 20);
+
+        if (isLocal) {
+            updateUI(this);
         }
     }
 
-    updateHealthDisplay = updateHealthDisplay;
-    updateScoreDisplay = updateScoreDisplay;
-
-    
-    punch() {
-        for (let id in players) {
-            if (id !== window.socket.id) {
-                players[id].health -= 10;
-                players[id].score += 10;
-                window.socket.emit("updateHealth", { id: id, health: players[id].health });
-            }
-        }
-    }
-    
-    kick() {
-        for (let id in players) {
-            if (id !== window.socket.id) {
-                players[id].health -= 10;
-                players[id].score += 10;
-                window.socket.emit("updateHealth", { id: id, health: players[id].health });
-            }
-        }
-    }
-    addCombo(move) {
-        const currentTime = Date.now();
-        
-        // Reset combo if too much time has passed
-        if (currentTime - this.lastComboTime > 800) {
-            this.currentCombo = [];
-        }
-
-        this.currentCombo.push(move);
-        this.lastComboTime = currentTime;
-
-        // Check for specific combos
-        this.checkCombos();
-    }
-
-    checkCombos() {
-        const comboString = this.currentCombo.join(',');
-        switch(comboString) {
-            case 'punch,punch':
-                console.log("Double Punch Combo!");
-                if (target) {
-                    target.health -= 15;
-                    console.log(`punch-punch opponent! New health: ${target.health}`);
-            
-                    window.socket.emit("updateHealth", { id: target.id, health: target.health });
-                }
-                break;
-            case 'kick,punch':
-                console.log("Punch-Kick Combo!");
-                if (target) {
-                    target.health -= 20;
-                    console.log(`Kick-punch opponent! New health: ${target.health}`);
-            
-                    window.socket.emit("updateHealth", { id: target.id, health: target.health });
-                }
-                break;
-        }
-
-        // Limit combo length
-        if (this.currentCombo.length > 3) {
-            this.currentCombo.shift();
+    drawProjectiles() {
+        ctx.strokeStyle = '#FFC107';
+        ctx.lineWidth = 3;
+        for (let p of this.projectiles) {
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.y);
+            ctx.lineTo(p.x - (p.vx * 1.5), p.y);
+            ctx.stroke();
         }
     }
 }
 
-// Handle input
-document.addEventListener('DOMContentLoaded', () => {
-    // Ensure keys object exists
-    let keys = {};
+// --- UI UPDATE ---
+function updateUI(player) {
+    const healthBar = document.getElementById('localHealth');
+    const scoreText = document.getElementById('localScore');
 
-    // Wrap event listeners to ensure they're only added after DOM is loaded
-    window.addEventListener("keydown", (e) => { 
-        if (!isGameStarted) return; // Prevent input before game starts
+    if (healthBar) {
+        healthBar.style.width = player.health + '%';
+        healthBar.textContent = player.health + '%';
+        healthBar.style.backgroundColor = player.health > 50 ? '#4CAF50' : '#F44336';
+    }
+    if (scoreText) scoreText.textContent = player.score;
+}
 
-        // Safely handle key input
-        const key = e.key ? e.key.toLowerCase() : '';
-        keys[key] = true;
+// --- NETWORK MANAGER ---
+const Network = {
+    peer: null,
+    conn: null,
 
-        // Combo input with null check
-        if (localPlayer.isColliding) {
-            switch(key) {
-                case 'j': 
-                    localPlayer.punch();
-                    localPlayer.addCombo('punch');
-                    break;
-                case 'k': 
-                    localPlayer.kick();
-                    localPlayer.addCombo('kick');
-                    break;
+    init(username, mode, targetId = null) {
+        this.peer = new Peer(null, { debug: 1 });
+
+        this.peer.on('open', (id) => {
+            if (mode === 'host') {
+                document.getElementById('myRoomId').textContent = id;
+                document.getElementById('hostStatus').textContent = "Waiting for player...";
+                this.setupHost();
+            } else {
+                this.connect(targetId, username);
             }
-        }
-    });
+        });
 
-    window.addEventListener("keyup", (e) => { 
-        const key = e.key ? e.key.toLowerCase() : '';
-        keys[key] = false; 
-    });
+        this.peer.on('error', (err) => { alert("Error: " + err.type); });
+    },
 
-    // Expose keys to global scope if needed
-    window.keys = keys;
+    setupHost() {
+        this.peer.on('connection', (conn) => {
+            this.conn = conn;
+            this.bindEvents();
+            document.getElementById('hostStatus').textContent = "Connected! Starting...";
+            setTimeout(() => startGame('host'), 1000);
+        });
+    },
+
+    connect(id, username) {
+        const conn = this.peer.connect(id);
+        conn.on('open', () => {
+            this.conn = conn;
+            this.bindEvents();
+            // Send handshake
+            this.send({ type: 'handshake', username: username });
+            document.getElementById('joinStatus').textContent = "Connected! Starting...";
+            setTimeout(() => startGame('client'), 1000);
+        });
+        conn.on('error', () => alert("Connection Failed"));
+    },
+
+    bindEvents() {
+        this.conn.on('data', (data) => handleData(data));
+        this.conn.on('close', () => {
+            alert("Peer disconnected");
+            location.reload();
+        });
+    },
+
+    send(data) {
+        if (this.conn && this.conn.open) this.conn.send(data);
+    }
+};
+
+function handleData(data) {
+    if (!remotePlayers['opponent']) {
+        // Create dummy opponent if not exists
+        remotePlayers['opponent'] = new Stickman(0, 0, "red", 'opponent');
+    }
+    const opp = remotePlayers['opponent'];
+
+    switch (data.type) {
+        case 'update':
+            // Interpolate or snap
+            opp.x = data.x;
+            opp.y = data.y;
+            opp.facing = data.facing;
+            opp.velX = data.velX; // for animation
+            opp.username = data.username;
+            opp.health = data.health;
+            break;
+
+        case 'attack':
+            if (data.attackType === 'punch') opp.punch();
+            else if (data.attackType === 'kick') opp.kick();
+            else if (data.attackType === 'shoot') {
+                opp.spawnProjectile(data.x, data.y, data.vx);
+            }
+            break;
+
+        case 'hit':
+            if (localPlayer) {
+                localPlayer.health = data.newHealth;
+                if (localPlayer.health <= 0) {
+                    alert("You Died!");
+                    location.reload();
+                }
+            }
+            break;
+
+        case 'handshake':
+            opp.username = data.username;
+            break;
+    }
+}
+
+// --- INPUT & LOOP ---
+const keys = {};
+window.addEventListener('keydown', (e) => {
+    keys[e.key.toLowerCase()] = true;
+    if (!localPlayer) return;
+
+    if (e.key.toLowerCase() === 'i') localPlayer.punch();
+    if (e.key.toLowerCase() === 'o') localPlayer.kick();
+    if (e.key.toLowerCase() === 'p') localPlayer.shoot();
+    if (e.key.toLowerCase() === 'q') localPlayer.dash();
 });
-
-function checkCollision(player1, player2) {
-    const hitboxReduction = 0.6; // Reduce hitbox size for more precise collision
-    return (
-        player1.x < player2.x + player2.width * hitboxReduction &&
-        player1.x + player1.width * hitboxReduction > player2.x &&
-        player1.y < player2.y + player2.height * hitboxReduction &&
-        player1.y + player1.height * hitboxReduction > player2.y
-    );
-}
+window.addEventListener('keyup', (e) => keys[e.key.toLowerCase()] = false);
 
 function update() {
     if (!isGameStarted) {
         requestAnimationFrame(update);
         return;
     }
-    if (localPlayer) {
-        let canMoveLeft = true;
-        let canMoveRight = true;
-        for (let id in players) {
-            if (id !== window.socket.id && players[id].isGameStarted) {
-                let enemy = players[id];
-                let mirroredX = (canvas.width - enemy.x) - localPlayer.width;
 
-                if (checkCollision(localPlayer, { x: mirroredX, y: enemy.y, width: 100, height: 100 })) {
-                    if (localPlayer.x < mirroredX) {
-                        localPlayer.isColliding = true;
-                        canMoveRight = false; // Block right movement
-                    } else if(localPlayer.x > mirroredX) {
-                        localPlayer.isColliding = true;
-                        canMoveLeft = false; // Block left movement
-                    }
-                    else if(localPlayer.x === mirroredX){
-                        localPlayer.isColliding = true;
-                        canMoveLeft = false;
-                        canMoveRight = false;
-                    }
-                    else {
-                        localPlayer.isColliding = false;
-                    }
-                }
-            }
-        }
-        // Movement logic
-        if (keys['a'] && canMoveLeft) localPlayer.move("left");
-        if (keys['d'] && canMoveRight) localPlayer.move("right");
-        if (keys[' ']) localPlayer.jump();
-        if (keys['shift']) localPlayer.airDash();
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Draw Ground
+    ctx.fillStyle = '#1e1e24';
+    ctx.fillRect(0, canvas.height - 34, canvas.width, 34);
+    ctx.beginPath(); ctx.moveTo(0, canvas.height - 34); ctx.lineTo(canvas.width, canvas.height - 34);
+    ctx.strokeStyle = '#4CAF50'; ctx.lineWidth = 2; ctx.stroke();
+
+    // Update Local
+    if (localPlayer) {
+        // Input
+        if (keys['a']) localPlayer.move('left');
+        else if (keys['d']) localPlayer.move('right');
+        /*else localPlayer.velX = 0; */ // handled by friction in update
+
+        if (keys[' '] || keys['w']) localPlayer.jump(); // Added W for jump
 
         localPlayer.update();
-
-        window.socket.emit("playerMove", { 
-            x: localPlayer.x, 
-            y: localPlayer.y,
-            health: localPlayer.health,
-            score: localPlayer.score,
-            facing: localPlayer.facing,
-            username: localPlayer.username,
-            isGameStarted: true
-        });
-
-    }
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    // Fill ground
-    ctx.fillStyle = '#8B4513';  // Earthy brown color
-    ctx.fillRect(0, canvas.height - 34, canvas.width, 34);
-    
-    // Optional: add a slightly darker border
-    ctx.beginPath();
-    ctx.moveTo(0, canvas.height - 34);
-    ctx.lineTo(canvas.width, canvas.height - 34);
-    ctx.strokeStyle = '#5D3A1A';  // Darker brown for border
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    
-    // Draw local player
-    if (localPlayer && isGameStarted) {
         localPlayer.draw(true);
+
+        // Sync
+        Network.send({
+            type: 'update',
+            x: localPlayer.x,
+            y: localPlayer.y,
+            velX: localPlayer.velX,
+            facing: localPlayer.facing,
+            health: localPlayer.health,
+            username: localPlayer.username
+        });
     }
 
-    // Draw other players
-    
-    for (let id in players) {
-        if (id !== window.socket.id && players[id].isGameStarted) {
-            let enemyData = players[id];
-            
-            // Calculate consistent spawn position
-            // Calculate consistent spawn position
-            let spawnX = canvas.width * 0.9; // Subtract width to position correctly
-            let spawnY = canvas.height * 0.75; // 50 is the ground offset
-
-            // Create enemy stickman with mirrored positioning
-            let otherPlayer = new Stickman(
-                spawnX, 
-                spawnY, 
-                "red", 
-                id
-            );
-
-            // Apply server-side position data carefully
-            //otherPlayer.x = spawnX + (enemyData.x - enemyData.baseX);
-            //otherPlayer.y = spawnY + (enemyData.y - enemyData.baseY);
-            
-            otherPlayer.facing = -enemyData.facing;
-            otherPlayer.username = enemyData.username;
-            
-            otherPlayer.draw();
-        }
+    // Update Opponent
+    if (remotePlayers['opponent']) {
+        const opp = remotePlayers['opponent'];
+        opp.update(); // Run physics so projectiles/gravity work
+        opp.draw();
     }
 
     requestAnimationFrame(update);
 }
-    
-startButton.addEventListener('click', () => {
-    const username = usernameInput.value.trim();
-    
-    if (!username) {
-        alert('Please enter a username');
-        return;
-    }
-    
-    if (!validateUsername()) {
-        alert('Invalid username');
-        return;
-    }
-    
+
+// --- MENU HANDLERS ---
+function startGame(role) {
     welcomeScreen.style.display = 'none';
-    resizeCanvas();
     isGameStarted = true;
-    window.socket = io("https://stickman-fighter.onrender.com");
+    resizeCanvas();
 
-    window.socket.on("connect", () => {
-        console.log("Connected to server, username:", username);
-        
-        // Create local player with initial position
-        const spawnPercentageX = 0.1;  // 10% from left
-        const spawnPercentageY = 0.9;  // 90% from bottom
+    const name = document.getElementById('usernameInput').value;
 
-        // Create local player with normalized positioning
-        localPlayer = new Stickman(
-            canvas.width * spawnPercentageX -130, 
-            canvas.height * spawnPercentageY, 
-            "blue",
-            window.socket.id
-        );
-        localPlayer.username = username;
-        
-        // Emit player move with game started flag and username
-        window.socket.emit("playerMove", { 
-            x: localPlayer.x, 
-            y: localPlayer.y,
-            baseX: localPlayer.baseX,
-            baseY: localPlayer.baseY,
-            spawnPercentageX: localPlayer.spawnPercentageX,
-            spawnPercentageY: localPlayer.spawnPercentageY,
-            health: localPlayer.health,
-            score: localPlayer.score,
-            facing: localPlayer.facing,
-            username: localPlayer.username, // Explicitly send username
-            isGameStarted: true
-        });
-    });
-    window.socket.on("updatePlayers", (serverPlayers) => {
-        players = serverPlayers;
-    });
-    window.socket.on("disconnect", (id) => {
-        delete players[id];
-    });
+    if (role === 'host') {
+        localPlayer = new Stickman(100, 300, "#58a6ff", 'local');
+    } else {
+        localPlayer = new Stickman(800, 300, "#58a6ff", 'local');
+    }
+    localPlayer.username = name;
+
+    update();
+}
+
+document.getElementById('createRoomBtn').addEventListener('click', () => {
+    const name = document.getElementById('usernameInput').value;
+    if (!name) return alert("Enter Name");
+
+    document.getElementById('modeSelection').style.display = 'none';
+    document.getElementById('roomControls').style.display = 'block';
+    document.getElementById('hostArea').style.display = 'block';
+
+    Network.init(name, 'host');
 });
-// Reduce console logging
-console.log = function() {};
 
-update();
+document.getElementById('joinRoomBtn').addEventListener('click', () => {
+    const name = document.getElementById('usernameInput').value;
+    if (!name) return alert("Enter Name");
+
+    document.getElementById('modeSelection').style.display = 'none';
+    document.getElementById('roomControls').style.display = 'block';
+    document.getElementById('joinArea').style.display = 'block';
+});
+
+document.getElementById('connectBtn').addEventListener('click', () => {
+    const name = document.getElementById('usernameInput').value;
+    const id = document.getElementById('destRoomId').value.trim();
+    if (!id) return;
+
+    document.getElementById('joinStatus').textContent = "Connecting...";
+    Network.init(name, 'join', id);
+});
+
+document.getElementById('copyBtn').addEventListener('click', () => {
+    const id = document.getElementById('myRoomId').textContent;
+    navigator.clipboard.writeText(id).then(() => alert("Copied!"));
+});
+
+document.getElementById('backBtn').addEventListener('click', () => location.reload());
