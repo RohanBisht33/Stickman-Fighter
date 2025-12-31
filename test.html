@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Stickman Fighter - TEST MODE</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* Test Mode Specific Styles */
+        body {
+            background-color: #000;
+        }
+
+        .welcome-screen {
+            display: none !important;
+        }
+
+        /* FORCE VISIBILITY OVERRIDE */
+        .game-container {
+            display: flex !important;
+        }
+
+        .rotation-warning {
+            display: none !important;
+        }
+
+        canvas {
+            /* Clean canvas */
+        }
+
+        .test-overlay {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255, 0, 0, 0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            z-index: 1000;
+            pointer-events: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="test-overlay">DEBUG / TEST MODE</div>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <div id="rotationWarning" class="rotation-warning" style="display: none;">
+        <div class="rotate-icon">📱</div>
+        <p>Please Rotate Your Device</p>
+    </div>
+
+    <!-- Original structure minus welcome screen logic override -->
+
+    <div class="welcome-screen" id="welcomeScreen">
+        <!-- Kept for DOM structure compatibility, but hidden by CSS -->
+        <div class="welcome-content">
+            <input type="text" id="usernameInput" value="TestUser">
+            <div class="mode-selection" id="modeSelection">
+                <button id="createRoomBtn">Host</button>
+                <button id="joinRoomBtn">Join</button>
+                <button id="settingsBtn">Settings</button>
+            </div>
+            <div class="room-controls" id="roomControls">
+                <div id="hostArea"><span id="myRoomId"></span></div>
+                <div id="joinArea"><input id="destRoomId"><button id="connectBtn"></button>
+                    <p id="joinStatus"></p>
+                </div>
+                <button id="backBtn">Back</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="game-container">
+        <div class="game-info">
+            <div class="player-stats local-player">
+                <div class="health-container">
+                    <div class="health-label">Health</div>
+                    <div class="health-bar">
+                        <div class="health-fill" id="localHealth">100%</div>
+                    </div>
+                </div>
+                <div class="score-container">
+                    <div class="score-label">Score</div>
+                    <div class="score" id="localScore">0</div>
+                </div>
+            </div>
+        </div>
+        <canvas id="gameCanvas"></canvas>
+    </div>
+
+    <!-- Copied Modals for Compatibility -->
+    <div id="settingsModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content settings-content">
+            <button id="closeSettingsBtn">Close</button>
+            <button class="tab-btn" data-tab="controls">C</button>
+            <button class="tab-btn" data-tab="combos">K</button>
+            <div id="tab-controls" class="tab-pane"></div>
+            <div id="tab-combos" class="tab-pane"></div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast">Test Mode Active</div>
+
+    <div id="pauseMenu" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <button id="resumeBtn">Resume</button>
+            <button id="pauseSettingsBtn">Settings</button>
+            <button id="quitBtn">Quit</button>
+        </div>
+    </div>
+
+    <div id="mobileControls" class="mobile-controls" style="display: none;">
+        <button id="btnLeft"></button><button id="btnRight"></button>
+        <button id="btnJump"></button><button id="btnDash"></button>
+        <button id="btnPunch"></button><button id="btnKick"></button><button id="btnFire"></button>
+    </div>
+
+    <div id="rematchModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <h2 id="winnerText"></h2>
+            <p id="rematchStatus"></p>
+            <button id="rematchBtn">Rematch</button>
+            <button id="acceptRematchBtn">Accept</button>
+            <button id="exitMatchBtn">Exit</button>
+        </div>
+    </div>
+
+    <script type="module" src="test_client.js"></script>
+</body>
+
+</html>
