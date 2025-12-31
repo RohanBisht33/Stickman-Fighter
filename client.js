@@ -3,7 +3,7 @@
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 const welcomeScreen = document.getElementById("welcomeScreen");
-const remotePlayers = {}; // Opponent instances
+const remotePlayers = {};
 let localPlayer = null;
 let isGameStarted = false;
 let isPaused = false;
@@ -13,8 +13,11 @@ let isGameOver = false;
 const pauseMenu = document.getElementById('pauseMenu');
 const rematchModal = document.getElementById('rematchModal');
 const toastEl = document.getElementById('toast');
-// Settings UI
 const settingsModal = document.getElementById('settingsModal');
+
+// --- CONSTANTS ---
+const GAME_WIDTH = 1280;
+const GAME_HEIGHT = 720;
 
 // --- UTILS ---
 function showToast(msg) {
@@ -23,19 +26,14 @@ function showToast(msg) {
     setTimeout(() => toastEl.classList.remove('show'), 3000);
 }
 
+// Fixed Logical Resolution, Visual Scaling
 function resizeCanvas() {
     const gameContainer = document.querySelector(".game-container");
     const gameInfo = document.querySelector(".game-info");
 
-    // Get actual display size
-    const w = gameContainer ? gameContainer.clientWidth : window.innerWidth;
-    const h = gameContainer ? (gameContainer.clientHeight - (gameInfo ? gameInfo.offsetHeight : 0)) : window.innerHeight;
-
-    // Set internal resolution to match display size (1:1 pixel mapping)
-    canvas.style.width = w + 'px';
-    canvas.style.height = h + 'px';
-    canvas.width = w;
-    canvas.height = h;
+    // Set internal resolution to Fixed Game World for consistency
+    canvas.width = GAME_WIDTH;
+    canvas.height = GAME_HEIGHT;
 }
 window.addEventListener('load', resizeCanvas);
 window.addEventListener('resize', resizeCanvas);
@@ -43,51 +41,47 @@ window.addEventListener('resize', resizeCanvas);
 
 // --- MOBILE CONTROLS ---
 const mobileKeys = {
-    left: false,
-    right: false,
-    dash: false // Hold input
+    left: false, right: false, dash: false, jump: false // Added jump to tracking
 };
 
 function setupMobileControls() {
-    const btnLeft = document.getElementById('btnLeft');
-    const btnRight = document.getElementById('btnRight');
-    const btnJump = document.getElementById('btnJump');
-    const btnDash = document.getElementById('btnDash');
-    const btnPunch = document.getElementById('btnPunch');
-    const btnKick = document.getElementById('btnKick');
-    const btnFire = document.getElementById('btnFire');
-
-    // Touch Events
-    const handleTouch = (btn, key, isPress) => {
-        if (!localPlayer) return;
-
-        if (key === 'left' || key === 'right') {
-            mobileKeys[key] = isPress;
-        } else if (key === 'dash') {
-            mobileKeys['dash'] = isPress; // Set hold state
-            if (isPress && localPlayer.isGrounded) localPlayer.startDash(); // Initial trigger? No, logic moved to update
-        } else if (isPress) { // Trigger Actions on Press
-            if (key === 'jump') localPlayer.jump();
-            if (key === 'punch') localPlayer.punch();
-            if (key === 'kick') localPlayer.kick();
-            if (key === 'fire') localPlayer.shoot();
-        }
+    const ids = ['btnLeft', 'btnRight', 'btnJump', 'btnDash', 'btnPunch', 'btnKick', 'btnFire'];
+    const map = {
+        'btnLeft': 'left', 'btnRight': 'right', 'btnJump': 'jump', 'btnDash': 'dash',
+        'btnPunch': 'punch', 'btnKick': 'kick', 'btnFire': 'fire'
     };
 
-    const bindBtn = (el, key) => {
-        el.addEventListener('touchstart', (e) => { e.preventDefault(); handleTouch(el, key, true); });
-        el.addEventListener('touchend', (e) => { e.preventDefault(); handleTouch(el, key, false); });
-        el.addEventListener('mousedown', (e) => { e.preventDefault(); handleTouch(el, key, true); });
-        el.addEventListener('mouseup', (e) => { e.preventDefault(); handleTouch(el, key, false); });
-    };
+    ids.forEach(id => {
+        const btn = document.getElementById(id);
+        if (!btn) return;
+        const key = map[id];
 
-    bindBtn(btnLeft, 'left');
-    bindBtn(btnRight, 'right');
-    bindBtn(btnJump, 'jump');
-    bindBtn(btnDash, 'dash');
-    bindBtn(btnPunch, 'punch');
-    bindBtn(btnKick, 'kick');
-    bindBtn(btnFire, 'fire');
+        const down = (e) => {
+            if (e.cancelable) e.preventDefault();
+            if (!localPlayer) return;
+
+            if (['left', 'right', 'dash', 'jump'].includes(key)) {
+                mobileKeys[key] = true;
+                if (key === 'dash' && localPlayer.isGrounded) localPlayer.startDash();
+            } else {
+                if (key === 'jump') localPlayer.jump(); // Jump on press? or hold?
+                // Actually Jump logic checks keys[' '] for hold height usually, but here simple impulse
+                if (key === 'punch') localPlayer.punch();
+                if (key === 'kick') localPlayer.kick();
+                if (key === 'fire') localPlayer.shoot();
+            }
+        };
+
+        const up = (e) => {
+            if (e.cancelable) e.preventDefault();
+            if (['left', 'right', 'dash', 'jump'].includes(key)) mobileKeys[key] = false;
+        };
+
+        btn.addEventListener('touchstart', down, { passive: false });
+        btn.addEventListener('touchend', up, { passive: false });
+        btn.addEventListener('mousedown', down);
+        btn.addEventListener('mouseup', up);
+    });
 }
 setupMobileControls();
 
@@ -95,7 +89,7 @@ setupMobileControls();
 class Stickman {
     constructor(x, y, color, id) {
         this.id = id;
-        this.x = x;
+        this.x = x; // Logical X (0 to GAME_WIDTH)
         this.y = y;
         this.baseX = x;
         this.baseY = y;
@@ -125,16 +119,14 @@ class Stickman {
         this.dashCooldown = 0;
         this.dashTimer = 0;
 
-        // Combat & Combos
+        // Combat
         this.isAttacking = false;
         this.attackType = null;
         this.attackFrame = 0;
         this.lastShotTime = 0;
         this.projectiles = [];
-
         this.comboKeys = [];
         this.lastComboTime = 0;
-
         this.walkFrame = 0;
     }
 
@@ -151,6 +143,8 @@ class Stickman {
     }
 
     registerComboInput(key) {
+        if (this !== localPlayer) return; // Only process local combo inputs
+
         const now = Date.now();
         if (now - this.lastComboTime > 1000) this.comboKeys = [];
         this.comboKeys.push(key);
@@ -182,44 +176,45 @@ class Stickman {
     update() {
         if (this.health <= 0) return;
 
-        // --- DASH LOGIC (BUFFED) ---
-        if (this.dashCooldown > 0) this.dashCooldown--;
-
-        // Hold Q / Dash Button Logic
-        const isHoldingDash = keys['q'] || mobileKeys['dash'];
-
-        if (isHoldingDash && this.canDash && this.dashCooldown === 0 && !this.isDashing) {
-            this.startDash();
+        // --- INPUT HANDLING (Only for Local Player) ---
+        // Opponents rely on VelX received from network
+        if (this === localPlayer) {
+            const isHoldingDash = keys['q'] || mobileKeys['dash'];
+            if (isHoldingDash && this.canDash && this.dashCooldown === 0 && !this.isDashing) {
+                this.startDash();
+            }
         }
+
+        // --- PHYSICS ---
+        // Dash
+        if (this.dashCooldown > 0) this.dashCooldown--;
 
         if (this.isDashing) {
             this.dashTimer--;
             if (this.dashTimer <= 0) {
                 this.isDashing = false;
-                this.dashCooldown = 30; // Reduced cooldown slightly
+                this.dashCooldown = 20;
                 this.velX *= 0.3;
             } else {
-                // Determine speed
-                let dashSpeed = 25;
-                if (!this.isGrounded) dashSpeed = 35; // Air Dash Buff (1.5x of Ground roughly?)
-
-                // BUFFED: "Hold Q" moves twice normal walk? Normal walk is 6. 
-                // 25 is already 4x. User probably meant "Hold Q" wasn't sustaining speed.
-                // With timer reset, it sustains.
+                // BUFFED VALUES: 
+                let dashSpeed = 40; // Ground Dash (Hold Q) - Fast!
+                if (!this.isGrounded) dashSpeed = 55; // Air Dash (Shift) - Super Fast!
 
                 this.velX = this.facing * dashSpeed;
                 this.velY = 0;
             }
         } else {
+            // Normal Move Physics
             this.x += this.velX;
             this.velY += this.gravity;
             this.y += this.velY;
             this.velX *= 0.82;
         }
 
-        // --- WALLS & FLOOR ---
-        if (this.y + this.height >= canvas.height - 34) {
-            this.y = canvas.height - 34 - this.height;
+        // --- WALLS (LOGICAL) ---
+        const floorY = GAME_HEIGHT - 34 - this.height;
+        if (this.y >= floorY) {
+            this.y = floorY;
             this.velY = 0;
             this.isGrounded = true;
             this.jumpsRemaining = 2;
@@ -229,7 +224,7 @@ class Stickman {
         }
 
         if (this.x < 0) { this.x = 0; this.velX = 0; }
-        if (this.x > canvas.width - this.width) { this.x = canvas.width - this.width; this.velX = 0; }
+        if (this.x > GAME_WIDTH - this.width) { this.x = GAME_WIDTH - this.width; this.velX = 0; }
 
         if (this.jumpCooldown > 0) this.jumpCooldown--;
 
@@ -259,7 +254,7 @@ class Stickman {
     startDash() {
         if (this.canDash) {
             this.isDashing = true;
-            this.dashTimer = 10; // Slightly longer dash
+            this.dashTimer = 12; // Duration
             this.canDash = false;
             if (!this.isGrounded) this.canDash = false;
         }
@@ -269,7 +264,7 @@ class Stickman {
         if (this.isAttacking) return;
         this.performAttack('punch');
         Network.send({ type: 'attack', attackType: 'punch' });
-        this.checkHit(5, 120, 5); // 5 knockback
+        this.checkHit(5, 120, 10);
         this.registerComboInput('i');
     }
 
@@ -277,13 +272,13 @@ class Stickman {
         if (this.isAttacking) return;
         this.performAttack('kick');
         Network.send({ type: 'attack', attackType: 'kick' });
-        this.checkHit(8, 140, 10); // 10 knockback
+        this.checkHit(8, 140, 20);
         this.registerComboInput('o');
     }
 
     shoot() {
         if (Date.now() - this.lastShotTime < 500) return;
-        const vx = 15 * this.facing;
+        const vx = 20 * this.facing;
         const startX = this.x + 50 + (30 * this.facing);
         const startY = this.y + 40;
         this.spawnProjectile(startX, startY, vx);
@@ -307,6 +302,10 @@ class Stickman {
     checkHit(damage, range, knockback = 0) {
         const enemy = remotePlayers['opponent'];
         if (enemy) {
+            // Logic handled in un-mirrored space?
+            // Since we mirror the opponent's position to our local referencing frame (0-1280),
+            // we can just check distance normally!
+
             const dx = enemy.x - this.x;
             const inFront = (this.facing === 1 && dx > -50) || (this.facing === -1 && dx < 50);
             const dist = Math.hypot((enemy.x + 50) - (this.x + 50), (enemy.y + 50) - (this.y + 50));
@@ -315,11 +314,10 @@ class Stickman {
                 enemy.health = Math.max(0, enemy.health - damage);
                 this.score += damage;
 
-                // Recoil Effect (Local Sim first?) No, send to network.
-                // Apply visual recoil on OUR screen for the enemy? Yes.
+                // Recoil
                 if (knockback > 0) {
                     enemy.velX = this.facing * knockback;
-                    enemy.velY = -5; // Slight pop up
+                    enemy.velY = -5; // Pop up
                 }
 
                 Network.send({
@@ -351,7 +349,6 @@ class Stickman {
                         p.y > enemy.y && p.y < enemy.y + 100) {
                         enemy.health = Math.max(0, enemy.health - p.damage);
 
-                        // Projectile Recoil
                         Network.send({
                             type: 'hit',
                             newHealth: enemy.health,
@@ -369,16 +366,19 @@ class Stickman {
     }
 
     draw(isLocal = false) {
-        const refHeight = 600;
-        const scaleFactor = Math.min(canvas.height / refHeight, 1.2);
+        // Draw using fixed logical coordinates
+        // No need for complex scaling logic if canvas internal res is Fixed
+        // But we might want to scale Stickman UP if resolution is high?
+        // With 1280x720, stickman size 100 is decent.
 
         ctx.save();
         ctx.translate(this.x + (this.width / 2), this.y + (this.height / 2));
-        ctx.scale(this.facing * scaleFactor, scaleFactor);
+        ctx.scale(this.facing, 1);
 
         let legL = 0, legR = 0, arm = 0;
         let bodyRot = 0;
 
+        // ... (Animation logic same as before) ...
         if (this.isDashing) {
             legL = 1.0; legR = 0.5; arm = 1.5;
             ctx.globalAlpha = 0.7;
@@ -441,6 +441,9 @@ class Stickman {
         }
 
         ctx.fillStyle = "white"; ctx.font = "14px 'Orbitron'"; ctx.textAlign = "center";
+
+        // Mirror Logic Compensation for Text?: 
+        // No, we render canvas as-is.
         ctx.fillText(this.username, this.x + 50, this.y - 20);
 
         if (isLocal) {
@@ -478,11 +481,7 @@ const Network = {
 
     setupHost() {
         this.peer.on('connection', (conn) => {
-            if (this.conn && this.conn.open) {
-                // Already have a player? Maybe reject or replace
-                // For simplicity, replace
-                this.conn.close();
-            }
+            if (this.conn && this.conn.open) this.conn.close();
             this.handleConn(conn);
         });
     },
@@ -504,17 +503,11 @@ const Network = {
         conn.on('data', (data) => handleData(data));
         conn.on('close', () => {
             showToast("Opponent Left");
-            // Don't close room immediately for Host
             if (localPlayer.id === 'local_host') {
-                const status = document.getElementById('hostStatus');
-                if (status) status.textContent = "Opponent Left. Waiting...";
-                // Clear opponent
+                // Reset
                 remotePlayers['opponent'] = null;
                 resetGame();
-                // Return to lobby? Or stay in empty game?
-                // Stay in game area but empty
             } else {
-                // For client, if host leaves, we must leave
                 alert("Host Closed Room");
                 location.reload();
             }
@@ -537,7 +530,7 @@ function handleData(data) {
     if (!remotePlayers['opponent']) {
         remotePlayers['opponent'] = new Stickman(0, 0, "red", 'opponent');
     }
-    const opp = remotePlayers['opponent'];
+    const opp = remotePlayers['opponent']; // Local reference to Remote Player
 
     switch (data.type) {
         case 'handshake':
@@ -556,26 +549,38 @@ function handleData(data) {
             break;
 
         case 'update':
-            opp.x = data.x;
-            opp.y = data.y;
-            opp.facing = data.facing;
-            opp.velX = data.velX;
+            // MIRROR LOGIC:
+            // Input: data.x = Opponent's Local X (0-1280)
+            // My View: 1280 - data.x - width
+            opp.x = GAME_WIDTH - data.x - opp.width;
+            opp.y = data.y; // Y matches
+
+            // Mirror Facing & Vel
+            opp.facing = -data.facing;
+            opp.velX = -data.velX;
+
             opp.health = data.health;
             break;
 
         case 'attack':
-            if (data.attackType === 'shoot') opp.spawnProjectile(data.x, data.y, data.vx);
-            else opp.performAttack(data.attackType);
+            if (data.attackType === 'shoot') {
+                // Mirror Projectile Origin & Velocity
+                const mX = GAME_WIDTH - data.x; // approximate?
+                // No, spawnProjectile takes logic X.
+                // Opponent fired at their X
+                // We spawn at mirrored X.
+                opp.spawnProjectile(GAME_WIDTH - data.x, data.y, -data.vx);
+            } else {
+                opp.performAttack(data.attackType);
+            }
             break;
 
         case 'hit':
             if (localPlayer) {
                 localPlayer.health = data.newHealth;
-
-                // RECOIL APPLICATION
-                if (data.knockbackX) localPlayer.velX = data.knockbackX;
-                if (data.knockbackY) localPlayer.velY = data.knockbackY;
-
+                // Mirror Recoil Vectors
+                if (data.knockbackX) localPlayer.velX = -data.knockbackX; // Incoming was local to them, so flip for us
+                if (data.knockbackY) localPlayer.velY = data.knockbackY; // Y is same
                 checkWinCondition();
             }
             break;
@@ -615,7 +620,9 @@ function resetGame() {
     document.getElementById('acceptRematchBtn').style.display = 'none';
 
     localPlayer.reset();
-    if (localPlayer.id === 'local_host') localPlayer.x = 100; else localPlayer.x = 800;
+
+    // EVERYONE SPAWNS LEFT in their own world (Mirror Match)
+    localPlayer.x = 100;
 
     if (remotePlayers['opponent']) remotePlayers['opponent'].reset();
 }
@@ -639,12 +646,11 @@ window.addEventListener('keydown', (e) => {
     }
 
     if (isPaused || !isGameStarted) return;
-
     keys[e.key.toLowerCase()] = true;
 
     const k = e.key.toLowerCase();
 
-    // Actions
+    // Actions - handled here or in update? One-shot here
     if (k === 'i') localPlayer.punch();
     if (k === 'o') localPlayer.kick();
     if (k === 'p') localPlayer.shoot();
@@ -659,13 +665,12 @@ function update() {
     requestAnimationFrame(update);
 
     if (isPaused) return;
-    if (canvas.width === 0) resizeCanvas();
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     // Environment
-    ctx.fillStyle = '#1e1e24'; ctx.fillRect(0, canvas.height - 34, canvas.width, 34);
-    ctx.strokeStyle = '#4CAF50'; ctx.beginPath(); ctx.moveTo(0, canvas.height - 34); ctx.lineTo(canvas.width, canvas.height - 34); ctx.stroke();
+    ctx.fillStyle = '#1e1e24'; ctx.fillRect(0, GAME_HEIGHT - 34, GAME_WIDTH, 34);
+    ctx.strokeStyle = '#4CAF50'; ctx.beginPath(); ctx.moveTo(0, GAME_HEIGHT - 34); ctx.lineTo(GAME_WIDTH, GAME_HEIGHT - 34); ctx.stroke();
 
     // Local Input Handle (Continuous)
     if (localPlayer) {
@@ -673,8 +678,6 @@ function update() {
         else if (keys['d'] || mobileKeys['right']) localPlayer.move('right');
 
         if (keys[' '] || mobileKeys['jump']) localPlayer.jump();
-
-        // Dash logic moved to update for Hold support
 
         localPlayer.update();
         localPlayer.draw(true);
@@ -739,8 +742,9 @@ document.getElementById('joinRoomBtn').addEventListener('click', () => {
     document.getElementById('roomControls').style.display = 'block';
     document.getElementById('joinArea').style.display = 'block';
 
-    localPlayer = new Stickman(800, 300, "#58a6ff", 'local_client');
-    localPlayer.facing = -1;
+    // SPAWN LEFT TOO (Mirror Logic)
+    localPlayer = new Stickman(100, 300, "#58a6ff", 'local_client');
+    localPlayer.facing = 1;
     localPlayer.username = name;
 });
 
@@ -765,7 +769,6 @@ document.getElementById('resumeBtn').addEventListener('click', () => {
 
 document.getElementById('quitBtn').addEventListener('click', () => location.reload());
 
-// REMATCH LOGIC
 document.getElementById('rematchBtn').addEventListener('click', () => {
     document.getElementById('rematchStatus').textContent = "Waiting for Opponent...";
     Network.send({ type: 'rematch_req' });
