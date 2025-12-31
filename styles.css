@@ -486,79 +486,80 @@ canvas {
         padding: 40px;
     }
 
-    /* Mobile Controls */
+    .score {
+        font-size: 2.5rem;
+    }
+}
+
+/* Mobile Controls */
+.mobile-controls {
+    position: fixed;
+    bottom: 20px;
+    left: 0;
+    width: 100%;
+    height: 150px;
+    pointer-events: none;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 40px;
+    box-sizing: border-box;
+    z-index: 5000;
+}
+
+.d-pad,
+.action-buttons {
+    pointer-events: auto;
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+.action-buttons {
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.action-row {
+    display: flex;
+    gap: 15px;
+}
+
+.control-btn {
+    background: rgba(255, 255, 255, 0.15);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    font-size: 1.5rem;
+    backdrop-filter: blur(5px);
+    touch-action: manipulation;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.control-btn:active {
+    background: rgba(255, 255, 255, 0.4);
+    transform: scale(0.95);
+}
+
+.action-btn {
+    background: rgba(255, 50, 50, 0.2);
+    border-color: rgba(255, 50, 50, 0.4);
+}
+
+@media (min-width: 1024px) {
     .mobile-controls {
-        position: fixed;
-        bottom: 20px;
-        left: 0;
-        width: 100%;
-        height: 150px;
-        pointer-events: none;
-        display: flex;
-        justify-content: space-between;
-        padding: 0 40px;
-        box-sizing: border-box;
-        z-index: 5000;
+        display: none !important;
     }
+}
 
-    .d-pad,
-    .action-buttons {
-        pointer-events: auto;
-        display: flex;
-        gap: 15px;
-        align-items: center;
+@media (max-width: 1023px) {
+    .mobile-controls {
+        display: flex !important;
     }
-
-    .action-buttons {
-        flex-direction: column;
-        justify-content: flex-end;
-        gap: 10px;
-    }
-
-    .action-row {
-        display: flex;
-        gap: 15px;
-    }
-
-    .control-btn {
-        background: rgba(255, 255, 255, 0.15);
-        border: 2px solid rgba(255, 255, 255, 0.3);
-        color: white;
-        width: 60px;
-        height: 60px;
-        border-radius: 50%;
-        font-size: 1.5rem;
-        backdrop-filter: blur(5px);
-        touch-action: manipulation;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        user-select: none;
-        -webkit-user-select: none;
-    }
-
-    .control-btn:active {
-        background: rgba(255, 255, 255, 0.4);
-        transform: scale(0.95);
-    }
-
-    .action-btn {
-        background: rgba(255, 50, 50, 0.2);
-        border-color: rgba(255, 50, 50, 0.4);
-    }
-
-    /* Hide on Desktop by default unless touch detected or small screen? 
-   Better to show if requested, but user said "For mobile devices". 
-   We will rely on JS detection or CSS width. */
-
-    @media (min-width: 1024px) {
-        .mobile-controls {
-            display: none !important;
-        }
-    }
-
-    @media (max-width: 1023px) {
-        .mobile-controls {
-            display: flex !important;
-        }
-    }
+}
