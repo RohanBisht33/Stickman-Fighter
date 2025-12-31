@@ -26,12 +26,9 @@ function showToast(msg) {
     setTimeout(() => toastEl.classList.remove('show'), 3000);
 }
 
-// Fixed Logical Resolution, Visual Scaling
+// Fixed Logical Resolution
 function resizeCanvas() {
-    const gameContainer = document.querySelector(".game-container");
-    const gameInfo = document.querySelector(".game-info");
-
-    // Set internal resolution to Fixed Game World for consistency
+    // Set internal resolution to Fixed Game World
     canvas.width = GAME_WIDTH;
     canvas.height = GAME_HEIGHT;
 }
@@ -41,7 +38,7 @@ window.addEventListener('resize', resizeCanvas);
 
 // --- MOBILE CONTROLS ---
 const mobileKeys = {
-    left: false, right: false, dash: false, jump: false // Added jump to tracking
+    left: false, right: false, dash: false, jump: false
 };
 
 function setupMobileControls() {
@@ -64,8 +61,7 @@ function setupMobileControls() {
                 mobileKeys[key] = true;
                 if (key === 'dash' && localPlayer.isGrounded) localPlayer.startDash();
             } else {
-                if (key === 'jump') localPlayer.jump(); // Jump on press? or hold?
-                // Actually Jump logic checks keys[' '] for hold height usually, but here simple impulse
+                if (key === 'jump') localPlayer.jump();
                 if (key === 'punch') localPlayer.punch();
                 if (key === 'kick') localPlayer.kick();
                 if (key === 'fire') localPlayer.shoot();
@@ -89,7 +85,7 @@ setupMobileControls();
 class Stickman {
     constructor(x, y, color, id) {
         this.id = id;
-        this.x = x; // Logical X (0 to GAME_WIDTH)
+        this.x = x;
         this.y = y;
         this.baseX = x;
         this.baseY = y;
@@ -143,7 +139,7 @@ class Stickman {
     }
 
     registerComboInput(key) {
-        if (this !== localPlayer) return; // Only process local combo inputs
+        if (this !== localPlayer) return;
 
         const now = Date.now();
         if (now - this.lastComboTime > 1000) this.comboKeys = [];
@@ -177,7 +173,6 @@ class Stickman {
         if (this.health <= 0) return;
 
         // --- INPUT HANDLING (Only for Local Player) ---
-        // Opponents rely on VelX received from network
         if (this === localPlayer) {
             const isHoldingDash = keys['q'] || mobileKeys['dash'];
             if (isHoldingDash && this.canDash && this.dashCooldown === 0 && !this.isDashing) {
@@ -186,7 +181,6 @@ class Stickman {
         }
 
         // --- PHYSICS ---
-        // Dash
         if (this.dashCooldown > 0) this.dashCooldown--;
 
         if (this.isDashing) {
@@ -196,15 +190,12 @@ class Stickman {
                 this.dashCooldown = 20;
                 this.velX *= 0.3;
             } else {
-                // BUFFED VALUES: 
-                let dashSpeed = 40; // Ground Dash (Hold Q) - Fast!
-                if (!this.isGrounded) dashSpeed = 55; // Air Dash (Shift) - Super Fast!
-
+                let dashSpeed = 40;
+                if (!this.isGrounded) dashSpeed = 55;
                 this.velX = this.facing * dashSpeed;
                 this.velY = 0;
             }
         } else {
-            // Normal Move Physics
             this.x += this.velX;
             this.velY += this.gravity;
             this.y += this.velY;
@@ -254,7 +245,7 @@ class Stickman {
     startDash() {
         if (this.canDash) {
             this.isDashing = true;
-            this.dashTimer = 12; // Duration
+            this.dashTimer = 12;
             this.canDash = false;
             if (!this.isGrounded) this.canDash = false;
         }
@@ -302,10 +293,6 @@ class Stickman {
     checkHit(damage, range, knockback = 0) {
         const enemy = remotePlayers['opponent'];
         if (enemy) {
-            // Logic handled in un-mirrored space?
-            // Since we mirror the opponent's position to our local referencing frame (0-1280),
-            // we can just check distance normally!
-
             const dx = enemy.x - this.x;
             const inFront = (this.facing === 1 && dx > -50) || (this.facing === -1 && dx < 50);
             const dist = Math.hypot((enemy.x + 50) - (this.x + 50), (enemy.y + 50) - (this.y + 50));
@@ -317,7 +304,7 @@ class Stickman {
                 // Recoil
                 if (knockback > 0) {
                     enemy.velX = this.facing * knockback;
-                    enemy.velY = -5; // Pop up
+                    enemy.velY = -5;
                 }
 
                 Network.send({
@@ -348,14 +335,12 @@ class Stickman {
                     if (p.x > enemy.x + 20 && p.x < enemy.x + 80 &&
                         p.y > enemy.y && p.y < enemy.y + 100) {
                         enemy.health = Math.max(0, enemy.health - p.damage);
-
                         Network.send({
                             type: 'hit',
                             newHealth: enemy.health,
                             knockbackX: p.vx > 0 ? 5 : -5,
                             knockbackY: -2
                         });
-
                         checkWinCondition();
                         p.life = 0;
                     }
@@ -366,10 +351,9 @@ class Stickman {
     }
 
     draw(isLocal = false) {
-        // Draw using fixed logical coordinates
-        // No need for complex scaling logic if canvas internal res is Fixed
-        // But we might want to scale Stickman UP if resolution is high?
-        // With 1280x720, stickman size 100 is decent.
+        // --- VISUAL FIX ---
+        // Render at 1:1 Scale because Canvas is already sized to Logical Res (1280x720)
+        // CSS handles the display scaling.
 
         ctx.save();
         ctx.translate(this.x + (this.width / 2), this.y + (this.height / 2));
@@ -378,7 +362,6 @@ class Stickman {
         let legL = 0, legR = 0, arm = 0;
         let bodyRot = 0;
 
-        // ... (Animation logic same as before) ...
         if (this.isDashing) {
             legL = 1.0; legR = 0.5; arm = 1.5;
             ctx.globalAlpha = 0.7;
@@ -417,11 +400,11 @@ class Stickman {
         ctx.lineJoin = "round";
 
         ctx.fillStyle = this.color;
+        // Draw centered
         ctx.beginPath(); ctx.arc(0, -35, 12, 0, Math.PI * 2); ctx.fill();
         ctx.beginPath(); ctx.moveTo(0, -23); ctx.lineTo(0, 15); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(0, 15); ctx.lineTo(Math.sin(legL) * 20, 45 + Math.cos(legL) * 5); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(0, 15); ctx.lineTo(Math.sin(legR) * 20, 45 + Math.cos(legR) * 5); ctx.stroke();
-
         ctx.beginPath(); ctx.moveTo(0, -15);
         if ((this.attackType === 'punch' || this.attackType === 'combo_triple_punch') && this.isAttacking) {
             ctx.lineTo(25 + punchOffset, -15);
@@ -442,10 +425,9 @@ class Stickman {
 
         ctx.fillStyle = "white"; ctx.font = "14px 'Orbitron'"; ctx.textAlign = "center";
 
-        // Mirror Logic Compensation for Text?: 
-        // No, we render canvas as-is.
         ctx.fillText(this.username, this.x + 50, this.y - 20);
 
+        // Local UI Sync
         if (isLocal) {
             const hpBar = document.getElementById('localHealth');
             const scText = document.getElementById('localScore');
@@ -455,7 +437,20 @@ class Stickman {
     }
 }
 
-// --- NETWORK (PeerJS) ---
+// --- FULLSCREEN & NETWORK ---
+function requestFullScreen() {
+    const doc = window.document;
+    const docEl = doc.documentElement;
+    const request = docEl.requestFullscreen || docEl.mozRequestFullScreen || docEl.webkitRequestFullScreen || docEl.msRequestFullscreen;
+    if (request) request.call(docEl);
+}
+
+document.addEventListener('touchstart', () => {
+    if (!document.fullscreenElement && window.innerWidth < 1024) {
+        requestFullScreen();
+    }
+}, { once: true });
+
 const Network = {
     peer: null,
     conn: null,
@@ -504,7 +499,6 @@ const Network = {
         conn.on('close', () => {
             showToast("Opponent Left");
             if (localPlayer.id === 'local_host') {
-                // Reset
                 remotePlayers['opponent'] = null;
                 resetGame();
             } else {
@@ -530,7 +524,7 @@ function handleData(data) {
     if (!remotePlayers['opponent']) {
         remotePlayers['opponent'] = new Stickman(0, 0, "red", 'opponent');
     }
-    const opp = remotePlayers['opponent']; // Local reference to Remote Player
+    const opp = remotePlayers['opponent'];
 
     switch (data.type) {
         case 'handshake':
@@ -550,25 +544,15 @@ function handleData(data) {
 
         case 'update':
             // MIRROR LOGIC:
-            // Input: data.x = Opponent's Local X (0-1280)
-            // My View: 1280 - data.x - width
             opp.x = GAME_WIDTH - data.x - opp.width;
-            opp.y = data.y; // Y matches
-
-            // Mirror Facing & Vel
+            opp.y = data.y;
             opp.facing = -data.facing;
             opp.velX = -data.velX;
-
             opp.health = data.health;
             break;
 
         case 'attack':
             if (data.attackType === 'shoot') {
-                // Mirror Projectile Origin & Velocity
-                const mX = GAME_WIDTH - data.x; // approximate?
-                // No, spawnProjectile takes logic X.
-                // Opponent fired at their X
-                // We spawn at mirrored X.
                 opp.spawnProjectile(GAME_WIDTH - data.x, data.y, -data.vx);
             } else {
                 opp.performAttack(data.attackType);
@@ -578,9 +562,8 @@ function handleData(data) {
         case 'hit':
             if (localPlayer) {
                 localPlayer.health = data.newHealth;
-                // Mirror Recoil Vectors
-                if (data.knockbackX) localPlayer.velX = -data.knockbackX; // Incoming was local to them, so flip for us
-                if (data.knockbackY) localPlayer.velY = data.knockbackY; // Y is same
+                if (data.knockbackX) localPlayer.velX = -data.knockbackX;
+                if (data.knockbackY) localPlayer.velY = data.knockbackY;
                 checkWinCondition();
             }
             break;
@@ -620,9 +603,7 @@ function resetGame() {
     document.getElementById('acceptRematchBtn').style.display = 'none';
 
     localPlayer.reset();
-
-    // EVERYONE SPAWNS LEFT in their own world (Mirror Match)
-    localPlayer.x = 100;
+    localPlayer.x = 100; // Left spawn (Mirrored)
 
     if (remotePlayers['opponent']) remotePlayers['opponent'].reset();
 }
@@ -632,6 +613,7 @@ function startGameUI() {
     document.getElementById('roomControls').style.display = 'none';
     isGameStarted = true;
     resizeCanvas();
+    // Force immediate first draw
     update();
 }
 
@@ -650,7 +632,6 @@ window.addEventListener('keydown', (e) => {
 
     const k = e.key.toLowerCase();
 
-    // Actions - handled here or in update? One-shot here
     if (k === 'i') localPlayer.punch();
     if (k === 'o') localPlayer.kick();
     if (k === 'p') localPlayer.shoot();
@@ -672,11 +653,9 @@ function update() {
     ctx.fillStyle = '#1e1e24'; ctx.fillRect(0, GAME_HEIGHT - 34, GAME_WIDTH, 34);
     ctx.strokeStyle = '#4CAF50'; ctx.beginPath(); ctx.moveTo(0, GAME_HEIGHT - 34); ctx.lineTo(GAME_WIDTH, GAME_HEIGHT - 34); ctx.stroke();
 
-    // Local Input Handle (Continuous)
     if (localPlayer) {
         if (keys['a'] || mobileKeys['left']) localPlayer.move('left');
         else if (keys['d'] || mobileKeys['right']) localPlayer.move('right');
-
         if (keys[' '] || mobileKeys['jump']) localPlayer.jump();
 
         localPlayer.update();
@@ -707,9 +686,7 @@ function toggleSettings() {
 
 document.getElementById('settingsBtn').addEventListener('click', toggleSettings);
 document.getElementById('closeSettingsBtn').addEventListener('click', toggleSettings);
-document.getElementById('pauseSettingsBtn').addEventListener('click', () => {
-    toggleSettings();
-});
+document.getElementById('pauseSettingsBtn').addEventListener('click', () => { toggleSettings(); });
 
 document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -723,26 +700,20 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 document.getElementById('createRoomBtn').addEventListener('click', () => {
     const name = document.getElementById('usernameInput').value;
     if (!name) return alert("Name Required");
-
     document.getElementById('modeSelection').style.display = 'none';
     document.getElementById('roomControls').style.display = 'block';
     document.getElementById('hostArea').style.display = 'block';
-
     localPlayer = new Stickman(100, 300, "#58a6ff", 'local_host');
     localPlayer.username = name;
-
     Network.init(name, true);
 });
 
 document.getElementById('joinRoomBtn').addEventListener('click', () => {
     const name = document.getElementById('usernameInput').value;
     if (!name) return alert("Name Required");
-
     document.getElementById('modeSelection').style.display = 'none';
     document.getElementById('roomControls').style.display = 'block';
     document.getElementById('joinArea').style.display = 'block';
-
-    // SPAWN LEFT TOO (Mirror Logic)
     localPlayer = new Stickman(100, 300, "#58a6ff", 'local_client');
     localPlayer.facing = 1;
     localPlayer.username = name;
@@ -752,7 +723,6 @@ document.getElementById('connectBtn').addEventListener('click', () => {
     const id = document.getElementById('destRoomId').value.toUpperCase();
     const name = document.getElementById('usernameInput').value;
     if (!id) return;
-
     Network.init(name, false, id);
     document.getElementById('joinStatus').textContent = "Connecting...";
 });
@@ -762,13 +732,8 @@ document.getElementById('copyBtn').addEventListener('click', () => {
     showToast("Copied to Clipboard!");
 });
 
-document.getElementById('resumeBtn').addEventListener('click', () => {
-    isPaused = false;
-    pauseMenu.style.display = 'none';
-});
-
+document.getElementById('resumeBtn').addEventListener('click', () => { isPaused = false; pauseMenu.style.display = 'none'; });
 document.getElementById('quitBtn').addEventListener('click', () => location.reload());
-
 document.getElementById('rematchBtn').addEventListener('click', () => {
     document.getElementById('rematchStatus').textContent = "Waiting for Opponent...";
     Network.send({ type: 'rematch_req' });
