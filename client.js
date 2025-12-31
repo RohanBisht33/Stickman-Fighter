@@ -405,9 +405,29 @@ function handleData(data) {
 
     switch (data.type) {
         case 'handshake':
+            // Host receives this from joining Client
             opp.username = data.username;
+            console.log("Received handshake from", data.username);
+
+            if (localPlayer.id === 'local_host') {
+                // Reply to Client so they can start!
+                Network.send({
+                    type: 'handshake_ack',
+                    username: localPlayer.username
+                });
+
+                showToast(`${data.username} Joined!`);
+                if (!isGameStarted) startGameUI();
+            }
+            break;
+
+        case 'handshake_ack':
+            // Client receives this from Host
+            opp.username = data.username;
+            console.log("Received handshake_ack from", data.username);
+
+            showToast(`Connected to ${data.username}!`);
             if (!isGameStarted) startGameUI();
-            showToast(`${data.username} Joined!`);
             break;
 
         case 'update':
@@ -586,6 +606,7 @@ document.getElementById('connectBtn').addEventListener('click', () => {
     Network.init(name, false, id);
     document.getElementById('joinStatus').textContent = "Connecting...";
 });
+
 
 document.getElementById('copyBtn').addEventListener('click', () => {
     navigator.clipboard.writeText(document.getElementById('myRoomId').textContent);
