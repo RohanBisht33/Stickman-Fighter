@@ -1,18 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Stickman Fighter</title>
     <link rel="stylesheet" href="styles.css">
 </head>
+
 <body>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <div class="welcome-screen" id="welcomeScreen">
         <div class="welcome-content">
             <h1>Stickman Fighter</h1>
             <p>P2P Multiplayer - Host or Join a 1v1</p>
-            
+
             <div class="username-container">
                 <div class="username-input-wrapper">
                     <input type="text" id="usernameInput" class="username-input" placeholder="Your Name" maxlength="12">
@@ -40,7 +42,7 @@
                     <button id="connectBtn" class="menu-btn" style="margin-top: 10px;">Connect & Fight</button>
                     <p class="status-text" id="joinStatus"></p>
                 </div>
-                
+
                 <button id="backBtn" class="small-btn secondary">Back</button>
             </div>
         </div>
@@ -60,30 +62,43 @@
                     <div class="score" id="localScore">0</div>
                 </div>
             </div>
-            <div class="game-controls">
-                <div class="key-guide">
-                    <div class="key-row">
-                        <div class="key-item"><span>A</span> Move Left</div>
-                        <div class="key-item"><span>D</span> Move Right</div>
-                    </div>
-                    <div class="key-row">
-                        <div class="key-item"><span>Space</span> Jump</div>
-                        <div class="key-item"><span>Hold/Dual Space</span>Double Jump</div>
-                    </div>
-                    <div class = "key-row">
-                        <div class="key-item"><span>Hold Q</span> Dash</div>
-                        <div class="key-item"><span>Shift in Air</span> AirDash</div>
-                    </div>
-                    <div class="key-row">
-                        <div class="key-item"><span>I</span> Punch</div>
-                        <div class="key-item"><span>O</span> Kick</div>
-                    </div>
-                </div>
-            </div>
         </div>
-        <canvas id="gameCanvas"></canvas>
+    </div>
+
+    <!-- UI Overlays -->
+    <div id="toast" class="toast">Player Joind!</div>
+
+    <div id="pauseMenu" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <h2>PAUSED</h2>
+            <div class="controls-guide">
+                <p><span>A / D</span> Move</p>
+                <p><span>Space</span> Jump (x2)</p>
+                <p><span>Hold Q</span> Dash</p>
+                <p><span>Shift (Air)</span> Air Dash</p>
+                <p><span>I</span> Punch</p>
+                <p><span>O</span> Kick</p>
+                <p><span>P</span> Shoot</p>
+            </div>
+            <button id="resumeBtn" class="menu-btn">Resume</button>
+            <button id="quitBtn" class="small-btn secondary">Quit to Menu</button>
+        </div>
+    </div>
+
+    <div id="rematchModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <h2 id="winnerText">GAME OVER</h2>
+            <div class="button-row">
+                <button id="rematchBtn" class="menu-btn" style="width: auto;">Rematch</button>
+                <button id="exitMatchBtn" class="small-btn secondary" style="width: auto; margin-top:0;">Exit</button>
+            </div>
+            <p id="rematchStatus" class="status-text"></p>
+        </div>
+    </div>
+    <canvas id="gameCanvas"></canvas>
     </div>
     <script src="/socket.io/socket.io.js"></script>
     <script src="client.js"></script>
 </body>
+
 </html>
