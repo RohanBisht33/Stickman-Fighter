@@ -26,9 +26,23 @@ function showToast(msg) {
     setTimeout(() => toastEl.classList.remove('show'), 3000);
 }
 
-// Fixed Logical Resolution
+// Fixed Logical Resolution with Letterboxing
 function resizeCanvas() {
-    // Set internal resolution to Fixed Game World
+    const gameContainer = document.querySelector(".game-container");
+    const gameInfo = document.querySelector(".game-info");
+
+    // Available viewport size
+    const w = gameContainer ? gameContainer.clientWidth : window.innerWidth;
+    const h = gameContainer ? (gameContainer.clientHeight - (gameInfo ? gameInfo.offsetHeight : 0)) : window.innerHeight;
+
+    // Calculate Scale to Fit
+    const scale = Math.min(w / GAME_WIDTH, h / GAME_HEIGHT);
+
+    // Apply CSS size
+    canvas.style.width = `${GAME_WIDTH * scale}px`;
+    canvas.style.height = `${GAME_HEIGHT * scale}px`;
+
+    // Ensure Internal Resolution is fixed
     canvas.width = GAME_WIDTH;
     canvas.height = GAME_HEIGHT;
 }
@@ -190,8 +204,8 @@ class Stickman {
                 this.dashCooldown = 20;
                 this.velX *= 0.3;
             } else {
-                let dashSpeed = 40;
-                if (!this.isGrounded) dashSpeed = 55;
+                let dashSpeed = 45; // Buffed
+                if (!this.isGrounded) dashSpeed = 60; // Buffed
                 this.velX = this.facing * dashSpeed;
                 this.velY = 0;
             }
@@ -245,7 +259,7 @@ class Stickman {
     startDash() {
         if (this.canDash) {
             this.isDashing = true;
-            this.dashTimer = 12;
+            this.dashTimer = 15; // Increased Duration
             this.canDash = false;
             if (!this.isGrounded) this.canDash = false;
         }
@@ -352,12 +366,12 @@ class Stickman {
 
     draw(isLocal = false) {
         // --- VISUAL FIX ---
-        // Render at 1:1 Scale because Canvas is already sized to Logical Res (1280x720)
-        // CSS handles the display scaling.
+        // Scale Up 1.5x for visibility
+        const face = this.facing || 1; // Safety fallback
 
         ctx.save();
         ctx.translate(this.x + (this.width / 2), this.y + (this.height / 2));
-        ctx.scale(this.facing, 1);
+        ctx.scale(face * 1.5, 1.5);
 
         let legL = 0, legR = 0, arm = 0;
         let bodyRot = 0;
@@ -395,16 +409,18 @@ class Stickman {
 
         ctx.rotate(bodyRot);
         ctx.strokeStyle = this.color;
-        ctx.lineWidth = 4;
+
+        // Slightly reduced line width relative to scale so it's not too cartoonish
+        ctx.lineWidth = 3;
         ctx.lineCap = "round";
         ctx.lineJoin = "round";
 
         ctx.fillStyle = this.color;
-        // Draw centered
         ctx.beginPath(); ctx.arc(0, -35, 12, 0, Math.PI * 2); ctx.fill();
         ctx.beginPath(); ctx.moveTo(0, -23); ctx.lineTo(0, 15); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(0, 15); ctx.lineTo(Math.sin(legL) * 20, 45 + Math.cos(legL) * 5); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(0, 15); ctx.lineTo(Math.sin(legR) * 20, 45 + Math.cos(legR) * 5); ctx.stroke();
+
         ctx.beginPath(); ctx.moveTo(0, -15);
         if ((this.attackType === 'punch' || this.attackType === 'combo_triple_punch') && this.isAttacking) {
             ctx.lineTo(25 + punchOffset, -15);
@@ -425,9 +441,8 @@ class Stickman {
 
         ctx.fillStyle = "white"; ctx.font = "14px 'Orbitron'"; ctx.textAlign = "center";
 
-        ctx.fillText(this.username, this.x + 50, this.y - 20);
+        ctx.fillText(this.username, this.x + 50, this.y - 45);
 
-        // Local UI Sync
         if (isLocal) {
             const hpBar = document.getElementById('localHealth');
             const scText = document.getElementById('localScore');
@@ -446,6 +461,7 @@ function requestFullScreen() {
 }
 
 document.addEventListener('touchstart', () => {
+    // Attempt fullscreen on first touch interaction
     if (!document.fullscreenElement && window.innerWidth < 1024) {
         requestFullScreen();
     }
@@ -613,7 +629,6 @@ function startGameUI() {
     document.getElementById('roomControls').style.display = 'none';
     isGameStarted = true;
     resizeCanvas();
-    // Force immediate first draw
     update();
 }
 
@@ -646,6 +661,7 @@ function update() {
     requestAnimationFrame(update);
 
     if (isPaused) return;
+    if (canvas.width !== GAME_WIDTH) resizeCanvas(); // Safety check
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
